@@ -8,10 +8,8 @@ const LeafletGpx = class extends HTMLElement {
     const container = this.ownerDocument.createElement("div");
     container.style.display = "flex";
     container.style.flexDirection = "column";
-    container.style.overflow = "hidden";
     
     // size adjustment
-    //mapDiv.style.cssText = this.style.cssText;
     const style = window.getComputedStyle(this);
     [container.style.width, container.style.height] = [style.width, style.height];
     window.addEventListener("resize", ev => {
@@ -19,17 +17,17 @@ const LeafletGpx = class extends HTMLElement {
     });
     
     const mapDiv = this.ownerDocument.createElement("div");
-    mapDiv.style.flex = "19";
+    mapDiv.style.flex = "1";
 
     const control = this.ownerDocument.createElement("div");
-    control.style.flex = "1";
+    control.style.minHeight = "5vh";
     control.style.display = "flex";
     control.style.alignItems = "center";
     control.style.justifyContent = "center";
     
     const slider = this.slider = this.ownerDocument.createElement("input");
     slider.style.flex = "1";
-    slider.style.marginLeft = slider.style.marginRight = "2vw";
+    slider.style.marginLeft = slider.style.marginRight = "5vw";
     slider.type = "range";
     slider.value = 0;
     slider.min = 0;
