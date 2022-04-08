@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="data:img/x-icon," />
+    <script type="module" src="./leaflet-gpx.js"></script>
+    <script type="module" src="./main.js"></script>
+  </head>
+  <body style="height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+    <select  style="width: 95vw; flex: 0.05;" id="chooser"><option>- Choose GPX -</option></select>
+    <leaflet-gpx id="viewer"
+      style="width: 95vw; flex: 0.95;"
+      data-info-span="60" data-info-size="20" data-info-colors="red,blue"
+      data-cursor-text="&#x1f6b4;"
+      ></leaflet-gpx>
+  </body>
+</html>
