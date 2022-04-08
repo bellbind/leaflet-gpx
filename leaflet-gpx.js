@@ -223,7 +223,7 @@ const setGpx = (map, infos, {span = 60, size = 10, colors = ["cyan", "magenta"]}
   const coords = infos.map(({latlng}) => latlng);
   const path = L.polyline(coords, {color: "blue", weight: 5, opacity: 0.5}).addTo(layer);
 
-  map.fitBounds(path.getBounds(), {paddingTopLeft: [6 * 15, 12 * 17]});
+  map.fitBounds(path.getBounds());
 
   // info popup
   const picked = infos.filter((info, i) => i % span === 0 || i === infos.length - 1);
