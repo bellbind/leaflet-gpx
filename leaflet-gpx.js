@@ -131,8 +131,8 @@ const gpxInfo = gpx => {
       infos[i - 1].moving + (info.speed > 0 ? info.date.getTime() - infos[i - 1].date.getTime() : 0);
     info.angle = i === 0 ? null : direction(info.latlng, infos[i - 1].latlng);
     info.maxSpeed = i === 0 ? 0 : Math.max(infos[i - 1].maxSpeed, info.speed);
-    info.elePlus = i === 0 ? 0 : infos[i - 1].elePlus + (infos[i - 1].ele < info.ele ? info.ele - infos[i - 1].ele : 0);
-    info.eleMinus = i === 0 ? 0 : infos[i - 1].eleMinus + (infos[i - 1].ele > info.ele ? infos[i - 1].ele - info.ele : 0);
+    info.elePlus = i === 0 ? 0 : infos[i - 1].elePlus + (info.speed > 0 && infos[i - 1].ele < info.ele ? info.ele - infos[i - 1].ele : 0);
+    info.eleMinus = i === 0 ? 0 : infos[i - 1].eleMinus + (info.speed > 0 && infos[i - 1].ele > info.ele ? infos[i - 1].ele - info.ele : 0);
   });
   return infos;
 };
