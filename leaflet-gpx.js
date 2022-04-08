@@ -8,7 +8,6 @@ const LeafletGpx = class extends HTMLElement {
     const container = this.ownerDocument.createElement("div");
     container.style.display = "flex";
     container.style.flexDirection = "column";
-    //container.style.overflow = "hidden";
     
     // size adjustment
     const style = window.getComputedStyle(this);
@@ -28,7 +27,7 @@ const LeafletGpx = class extends HTMLElement {
     
     const slider = this.slider = this.ownerDocument.createElement("input");
     slider.style.flex = "1";
-    slider.style.marginLeft = slider.style.marginRight = "2vw";
+    slider.style.marginLeft = slider.style.marginRight = "5vw";
     slider.type = "range";
     slider.value = 0;
     slider.min = 0;
