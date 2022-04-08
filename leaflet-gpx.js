@@ -8,6 +8,7 @@ const LeafletGpx = class extends HTMLElement {
     const container = this.ownerDocument.createElement("div");
     container.style.display = "flex";
     container.style.flexDirection = "column";
+    container.style.overflow = "hidden";
     
     // size adjustment
     //mapDiv.style.cssText = this.style.cssText;
@@ -28,7 +29,7 @@ const LeafletGpx = class extends HTMLElement {
     
     const slider = this.slider = this.ownerDocument.createElement("input");
     slider.style.flex = "1";
-    slider.style.marginLeft = slider.style.marginRight = "2vmin";
+    slider.style.marginLeft = slider.style.marginRight = "2vw";
     slider.type = "range";
     slider.value = 0;
     slider.min = 0;
@@ -61,16 +62,17 @@ const LeafletGpx = class extends HTMLElement {
     if (this.layer) return;  
     if (this.dataset.src) {
       loadGpxFromUrl(this.dataset.src).then(xml => this.setGpx(xml, this.dataset), error => {
-        this.map.locate({setView: true, maxZoom: 16});
+        this.map.setView([0, 0], 0);
         throw error;
       }).catch(console.error);
     } else if (this.dataset.ipfsCid) {
       loadGpxFromCid(this.dataset.ipfsCid).then(xml => this.setGpx(xml, this.dataset), error => {
-        this.map.locate({setView: true, maxZoom: 16});
+        this.map.setView([0, 0], 0);
         throw error;
       }).catch(console.error);
     } else {
-      this.map.locate({setView: true, maxZoom: 16});
+      //this.map.locate({setView: true, maxZoom: 16});
+      this.map.setView([0, 0], 0);
     }
   }
   setGpx(xml, dataset = this.dataset) {
@@ -126,16 +128,18 @@ const gpxInfo = gpx => {
   }));
   infos.forEach((info, i) => {
     info.distance = i === 0 ? 0 : infos[i - 1].distance + info.latlng.distanceTo(infos[i - 1].latlng);
+    info.speed ??= i === 0 ? 0 : info.latlng.distanceTo(infos[i - 1].latlng) / (info.date.getTime() - infos[i - 1].date.getTime());
     info.time = info.date.getTime() - infos[0].date.getTime();
     info.moving = i === 0 ? 0 :
       infos[i - 1].moving + (info.speed > 0 ? info.date.getTime() - infos[i - 1].date.getTime() : 0);
     info.angle = i === 0 ? null : direction(info.latlng, infos[i - 1].latlng);
     info.maxSpeed = i === 0 ? 0 : Math.max(infos[i - 1].maxSpeed, info.speed);
-    info.elePlus = i === 0 ? 0 : infos[i - 1].elePlus + (info.speed > 0 && infos[i - 1].ele < info.ele ? info.ele - infos[i - 1].ele : 0);
-    info.eleMinus = i === 0 ? 0 : infos[i - 1].eleMinus + (info.speed > 0 && infos[i - 1].ele > info.ele ? infos[i - 1].ele - info.ele : 0);
+    info.lpEle = i === 0 ? info.ele : infos[i - 1].lpEle * 0.95 + info.ele * 0.05; // low-pass 1/20
+    info.elePlus = i === 0 ? 0 : infos[i - 1].elePlus + (info.speed > 0 && infos[i - 1].lpEle < info.lpEle ? info.lpEle - infos[i - 1].lpEle : 0);
+    info.eleMinus = i === 0 ? 0 : infos[i - 1].eleMinus + (info.speed > 0 && infos[i - 1].lpEle > info.lpEle ? infos[i - 1].lpEle - info.lpEle : 0);
   });
   return infos;
-};
+}; 
 
 const direction = (from, to) => {
   if (to.lat === from.lat && to.lng === from.lng) return null;

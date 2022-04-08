@@ -8,8 +8,7 @@ chooser.addEventListener("change", ev => {
 
 const options = index.map(gpx => {
   const option = document.createElement("option");
-  option.value = option.textContent = gpx.href;
+  option.textContent = gpx.href;
   return option;
 });
 chooser.append(...options);
-

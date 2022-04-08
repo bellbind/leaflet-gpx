@@ -6,10 +6,10 @@
     <script type="module" src="./leaflet-gpx.js"></script>
     <script type="module" src="./main.js"></script>
   </head>
-  <body style="height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-    <select  style="width: 95vw; flex: 0.05;" id="chooser"><option>- Choose GPX -</option></select>
+  <body style="margin: 0px; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+    <select style="width: 100vw; font-size: 2vh;" id="chooser"><option>- Choose GPX -</option></select>
     <leaflet-gpx id="viewer"
-      style="width: 95vw; flex: 0.95;"
+      style="width: 100vw; flex: 1;"
       data-info-span="60" data-info-size="20" data-info-colors="red,blue"
       data-cursor-text="&#x1f6b4;"
       ></leaflet-gpx>
