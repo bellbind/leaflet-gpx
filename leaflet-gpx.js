@@ -40,6 +40,7 @@ const LeafletGpx = class extends HTMLElement {
         this.cursor.setLatLng(info.latlng);
         this.cursor.setPopupContent(infoPopup(info));
         this.cursor.openPopup();
+        this.map.setView(info.latlng, this.map.getZoom());
       }
     });
     
