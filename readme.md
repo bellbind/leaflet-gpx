@@ -23,9 +23,9 @@ NOTE: `<leaflet-gpx>` requires some size setting (e.g. CSS width & height)
 
 ## Working [examples](./examples/)
 
-- [simple-url.html](./examples/simple-url.html): `<leaflet-gpx>` with `data-src` only
-- [customized-url.html](./examples/customized-url.html): `<leaflet-gpx>` with customzing attributes
-- [dnd.html](./examples/dnd.html): Displaying a Drag & Drop-ed GPX file with `setGpx(xml)` method
+- [simple-url.html](https://bellbind.github.io/leaflet-gpx/examples/simple-url.html): `<leaflet-gpx>` with `data-src` only
+- [customized-url.html](https://bellbind.github.io/leaflet-gpx/examples/customized-url.html): `<leaflet-gpx>` with customzing attributes
+- [dnd.html](https://bellbind.github.io/leaflet-gpx/examples/dnd.html): Displaying a Drag & Drop-ed GPX file with `setGpx(xml)` method
 
 ## `<leaflet-gpx>` attributes
 
