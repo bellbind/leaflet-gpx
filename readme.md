@@ -33,6 +33,7 @@ NOTE: `<leaflet-gpx>` requires some size setting (e.g. CSS width & height)
 - `data-info-span`: marker span of `trkpt`s (default: `"60"`) 
 - `data-info-size`: base meter size of marker (defalut: `"10"`)
 - `data-info-colors`: comma separated color names (default: `"cyan,magenta"`)
+- `data-cursor-text`: cursor icon text (default: `"&#x1f3c3;"` as "Runner" emoji)
 
 ### Unstable features
 
