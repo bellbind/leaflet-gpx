@@ -55,6 +55,7 @@ const LeafletGpx = class extends HTMLElement {
         return 0;
       })();
       if (amount === 0) return;
+      ev.preventDefault();
       this.slider.value = Number(this.slider.value) + amount;
       const info = this.infos[this.slider.value | 0];
       this.cursor.setLatLng(info.latlng);

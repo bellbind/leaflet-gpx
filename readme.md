@@ -21,6 +21,19 @@
 
 NOTE: `<leaflet-gpx>` requires some size setting (e.g. CSS width & height)
 
+## Key bind of slider
+
+- `ArrowRight` key: go forward
+- `ArrowLeft` key: go backward
+
+Decorations
+
+- `ShiftKey`: amount * 10 
+- `ControlKey`: amount * 4 
+- `AltKey`: amount * 3
+- `MetaKey`: amount * 2
+
+
 ## Working [examples](./examples/)
 
 - [simple-url.html](https://bellbind.github.io/leaflet-gpx/examples/simple-url.html): `<leaflet-gpx>` with `data-src` only
