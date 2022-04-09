@@ -23,16 +23,17 @@ NOTE: `<leaflet-gpx>` requires some size setting (e.g. CSS width & height)
 
 ## Key bind of slider
 
-- `ArrowRight` key: go forward
-- `ArrowLeft` key: go backward
+- `ArrowRight` key: go cursor forward
+- `ArrowLeft` key: go cursor backward
+- `ArrowDown` key: move home at cursor
+- `ArrowDown` key: move cursor at home
 
-Decorations
+Decorations for steps
 
 - `ShiftKey`: amount * 10 
 - `ControlKey`: amount * 4 
 - `AltKey`: amount * 3
 - `MetaKey`: amount * 2
-
 
 ## Working [examples](./examples/)
 
@@ -47,6 +48,7 @@ Decorations
 - `data-info-size`: base meter size of marker (defalut: `"10"`)
 - `data-info-colors`: comma separated color names (default: `"cyan,magenta"`)
 - `data-cursor-text`: cursor icon text (default: `"&#x1f3c3;"` as "Runner" emoji)
+- `data-home-text`: cursor icon text (default: `"&#x1f3e0;"` as "House" emoji)
 
 ### Unstable features
 
@@ -56,10 +58,12 @@ Decorations
 
 - `this.setGpx(xml, dataset = this.dataset)`: update GPX XML text
 - `this.map`: a `Map` object of Leaflet
-- `this.cursor: a `Marker` object for slider controlling
+- `this.cursor`: a `Marker` object for slider controlling
+- `this.home`: a `Marker` object for base position of cursor info
 - `this.layer`: a `LayerGroup` object contains lines, markers, and the `cursor`
 - `this.infos`: a list of info from GPX `trkpt` elements
 - `this.slider`: a `<input type="range">` element for moving the `cursor`
+- `this.homeSlider`: a `<input type="range">` element for moving the `home`
 - `this.control`: a `Control` object for the top-right download link panel
 
 ## Reference
