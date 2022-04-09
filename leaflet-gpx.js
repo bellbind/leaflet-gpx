@@ -34,13 +34,33 @@ const LeafletGpx = class extends HTMLElement {
     slider.max = 0;
     control.append(slider);
     slider.addEventListener("input", ev => {
-      if (this.cursor) {
-        const info = this.infos[slider.value | 0];
-        this.cursor.setLatLng(info.latlng);
-        this.cursor.setPopupContent(infoPopup(info));
-        this.cursor.openPopup();
-        this.map.setView(info.latlng, this.map.getZoom());
-      }
+      if (!this.cursor) return;
+      const info = this.infos[slider.value | 0];
+      this.cursor.setLatLng(info.latlng);
+      this.cursor.setPopupContent(infoPopup(info));
+      this.cursor.openPopup();
+      this.map.setView(info.latlng, this.map.getZoom());
+    });
+
+    // keybind
+    control.tabIndex = 0;
+    control.addEventListener("keydown", ev => {
+      if (!this.cursor) return;
+      const amount = (() => {
+        const amount = (ev.controlKey ? 4 : 1) * (ev.shiftKey ? 10 : 1) * (ev.altKey ? 3 : 1) * (ev.metaKey ? 2 : 1);
+        switch (ev.code) {
+        case "ArrowLeft": return -amount;
+        case "ArrowRight": return amount;
+        }
+        return 0;
+      })();
+      if (amount === 0) return;
+      this.slider.value = Number(this.slider.value) + amount;
+      const info = this.infos[this.slider.value | 0];
+      this.cursor.setLatLng(info.latlng);
+      this.cursor.setPopupContent(infoPopup(info));
+      this.cursor.openPopup();
+      this.map.setView(info.latlng, this.map.getZoom());
     });
     
     //leaflet css
