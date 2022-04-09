@@ -20,49 +20,68 @@ const LeafletGpx = class extends HTMLElement {
     mapDiv.style.flex = "1";
 
     const control = this.ownerDocument.createElement("div");
-    control.style.minHeight = "5vh";
+    control.style.minHeight = "10%";
     control.style.display = "flex";
     control.style.alignItems = "center";
     control.style.justifyContent = "center";
+    control.style.flexDirection = "column";
     
     const slider = this.slider = this.ownerDocument.createElement("input");
     slider.style.flex = "1";
-    slider.style.marginLeft = slider.style.marginRight = "5vw";
+    slider.style.width = "90%";
+    
+    slider.style.marginLeft = slider.style.marginRight = "5%";
     slider.type = "range";
-    slider.value = 0;
-    slider.min = 0;
-    slider.max = 0;
+    slider.value = slider.min = slider.max = 0;
     control.append(slider);
     slider.addEventListener("input", ev => {
       if (!this.cursor) return;
       const info = this.infos[slider.value | 0];
       this.cursor.setLatLng(info.latlng);
-      this.cursor.setPopupContent(infoPopup(info));
+      this.cursor.setPopupContent(infoPopup(this.infos, this.maxSpeedTree, slider.value | 0, homeSlider.value | 0));
       this.cursor.openPopup();
       this.map.setView(info.latlng, this.map.getZoom());
     });
 
-    // keybind
+    // home
+    const homeSlider = this.homeSlider = this.ownerDocument.createElement("input");
+    homeSlider.style.flex = "1";
+    homeSlider.style.width = "90%";
+    homeSlider.style.webkitAppearance = "none"; 
+    
+    homeSlider.style.marginLeft = homeSlider.style.marginRight = "5%";
+    homeSlider.type = "range";
+    homeSlider.value = homeSlider.min = homeSlider.max = 0;
+    control.append(homeSlider);
+    homeSlider.addEventListener("input", ev => {
+      if (!this.home) return;
+      const info = this.infos[homeSlider.value | 0];
+      this.home.setLatLng(info.latlng);
+      this.cursor.setPopupContent(infoPopup(this.infos, this.maxSpeedTree, slider.value | 0, homeSlider.value | 0));
+    });
+    
+    // slider keybind
     control.tabIndex = 0;
     control.addEventListener("keydown", ev => {
       if (!this.cursor) return;
-      const amount = (() => {
-        const amount = (ev.controlKey ? 4 : 1) * (ev.shiftKey ? 10 : 1) * (ev.altKey ? 3 : 1) * (ev.metaKey ? 2 : 1);
-        switch (ev.code) {
-        case "ArrowLeft": return -amount;
-        case "ArrowRight": return amount;
-        }
-        return 0;
-      })();
-      if (amount === 0) return;
+      if (ev.code === "ArrowDown") {
+        this.homeSlider.value = this.slider.value;
+      } else if (ev.code === "ArrowUp") {
+        this.slider.value = this.homeSlider.value;
+      } else {
+        const step = (ev.controlKey ? 4 : 1) * (ev.shiftKey ? 10 : 1) * (ev.altKey ? 3 : 1) * (ev.metaKey ? 2 : 1);
+        const amount = ev.code === "ArrowRight" ? step : ev.code === "ArrowLeft" ? -step : 0;
+        if (amount === 0) return;
+        this.slider.value = Number(this.slider.value) + amount;
+      }
       ev.preventDefault();
-      this.slider.value = Number(this.slider.value) + amount;
       const info = this.infos[this.slider.value | 0];
       this.cursor.setLatLng(info.latlng);
-      this.cursor.setPopupContent(infoPopup(info));
+      this.cursor.setPopupContent(infoPopup(this.infos, this.maxSpeedTree, slider.value | 0, homeSlider.value | 0));
       this.cursor.openPopup();
       this.map.setView(info.latlng, this.map.getZoom());
     });
+
     
     //leaflet css
     const cssLink = this.ownerDocument.createElement("link");
@@ -94,12 +113,18 @@ const LeafletGpx = class extends HTMLElement {
       this.map.setView([0, 0], 0);
     }
   }
+  clearGpx() {
+    if (!this.layer) return;
+    this.layer.remove();
+    this.control.remove();
+    this.cursor.remove();
+    this.home.remove();
+    this.layer = this.cursor = this.control = this.home = null;
+    this.slider.value = this.homeSlider.value = this.slider.max = this.homeSlider.max = 0;
+    this.infos = this.maxSpeedTree = null;
+  }
   setGpx(xml, dataset = this.dataset) {
-    if (this.layer) {
-      this.layer.remove();
-      this.cursor.remove();
-      this.control.remove();
-    }
+    this.clearGpx();
     const dataSpan = Math.trunc(dataset.infoSpan);
     const dataSize = Number(dataset.infoSize);
     const dataColors = dataset.infoColors?.split(",")?.map(c => c.trim()) ?? [];
@@ -107,18 +132,30 @@ const LeafletGpx = class extends HTMLElement {
     const size = dataSpan > 0 ? dataSize : 10;
     const colors = dataColors.length > 0 ? dataColors : ["cyan", "magenta"];
     const cursorText = dataset.cursorText ?? "&#x1f3c3;";
+    const homeText = dataset.homeText ?? "&#x1f3e0;";
     const gpx = new DOMParser().parseFromString(xml, "application/xml");
-    this.infos = gpxInfo(gpx);
-    this.slider.value = 0;
-    this.slider.max = this.infos.length - 1;
-    this.layer = setGpx(this.map, this.infos, {span, size, colors});
-    //this.cursor = L.circleMarker(this.infos[0].latlng, {radius: 10, color: "black"}).addTo(this.map).bindPopup(infoPopup(this.infos[0]));
-    this.cursor = L.marker(this.infos[0].latlng, {icon: L.divIcon({
-      html: `<span style="font-size: 30px; vertical-slign: middle;">${cursorText}</span>`,
-      iconSize: [0, 0],
-      iconAnchor: [15, 30],
-      popupAnchor: [0, -15],
-    })}).addTo(this.layer).bindPopup(infoPopup(this.infos[0]));
+    const infos = this.infos = gpxInfo(gpx);
+    const maxSpeedTree = this.maxSpeedTree = createMaxSpeedTree(infos);
+    this.slider.value = this.homeSlider.value = 0;
+    this.slider.max = this.homeSlider.max = this.infos.length - 1;
+    this.layer = setGpx(this.map, this.infos, this.maxSpeedTree, {span, size, colors});
+    this.cursor = L.marker(this.infos[0].latlng, {
+      icon: L.divIcon({
+        html: `<span style="font-size: 30px; vertical-slign: middle;">${cursorText}</span>`,
+        iconSize: [0, 0],
+        iconAnchor: [15, 30],
+        popupAnchor: [0, -15],
+      }),
+    }).addTo(this.layer).bindPopup(infoPopup(this.infos, this.maxSpeedTree, 0));
+    this.home = L.marker(this.infos[0].latlng, {
+      icon: L.divIcon({
+        html: `<span style="font-size: 30px; vertical-slign: middle;">${homeText}</span>`,
+        iconSize: [0, 0],
+        iconAnchor: [15, 30],
+        popupAnchor: [0, -15],
+      }),
+      zIndexOffset: -1000,
+    }).addTo(this.layer);
     this.control = setDownloadLink(this.map, gpx, xml);
   }
 };
@@ -169,6 +206,23 @@ const direction = (from, to) => {
   return atan2(y, z);
 };
 
+// binary tree of the max value for maxSpeed search
+const createMaxTree = (values, start, last) => {
+  const length = last - start;
+  if (length === 1) return {max: values[start], start, last};
+  const mid = start + (length >> 1);
+  const left = createMaxTree(values, start, mid);
+  const right = createMaxTree(values, mid, last);
+  return {max: Math.max(left.max, right.max), start, last, left, right};
+};
+const getMax = (tree, min, start, last) => {
+  if (start <= tree.start && tree.last <= last) return tree.max; // when tree is complete inside
+  if (last <= tree.start || tree.last <= start) return min; // when tree is complete outside
+  return Math.max(getMax(tree.left, min, start, last), getMax(tree.right, min, start, last));
+};
+const createMaxSpeedTree = (infos) => createMaxTree(infos.map(({speed}) => speed), 0, infos.length);
+const getMaxSpeed = (tree, start, last) => getMax(tree, 0, start, last);
+
 const msecToTime = msec => {
   const ms = msec % 1000;
   const sec = (msec - ms) / 1000;
@@ -212,8 +266,21 @@ const eleNf = new Intl.NumberFormat(undefined, {
 const distanceNf = new Intl.NumberFormat(undefined, {
   unit: "kilometer", style: "unit", unitDisplay: "narrow",
   maximumFractionDigits: 3, minimumFractionDigits: 3});
-  
-const infoPopup = ({latlng, date, speed, ele, distance, time, moving, angle, maxSpeed, elePlus, eleMinus}) => {
+
+const findMaxSpeed = (infos, maxSpeedTree, index, baseIndex) => {
+  if (baseIndex === 0) return infos[index].maxSpeed;
+  if (index === baseIndex) return infos[index].speed;
+  return getMaxSpeed(maxSpeedTree, Math.min(index, baseIndex), Math.max(index, baseIndex) + 1); 
+};
+const infoPopup = (infos, maxSpeedTree, index, baseIndex = 0) => {
+  const info = infos[index], base = infos[baseIndex];
+  const {latlng, date, speed, ele} = info;
+  const maxSpeed = findMaxSpeed(infos, maxSpeedTree, index, baseIndex);
+  const distance = Math.abs(info.distance - base.distance);
+  const time = Math.abs(info.time - base.time);
+  const moving = Math.abs(info.moving - base.moving);
+  const elePlus = Math.abs(info.elePlus - base.elePlus);
+  const eleMinus = Math.abs(info.eleMinus - base.eleMinus);
   const lat = Math.abs(latlng.lat), lng = Math.abs(latlng.lng);
   const ns = "NS"[Number(Math.sign(latlng.lat) < 0)], ew = "EW"[Number(Math.sign(latlng.lng) < 0)];
   const total = msecToTime(time);
@@ -239,7 +306,7 @@ const infoPopup = ({latlng, date, speed, ele, distance, time, moving, angle, max
   return `<pre style='font-size: 12px; font-family: "Noto Mono", "Menlo", "Consolas", monospace !important;'>${labels}</pre>`;
 };
 
-const setGpx = (map, infos, {span = 60, size = 10, colors = ["cyan", "magenta"]} = {}) => {
+const setGpx = (map, infos, maxSpeedTree, {span = 60, size = 10, colors = ["cyan", "magenta"]} = {}) => {
   // path
   const layer = L.layerGroup().addTo(map);
   const coords = infos.map(({latlng}) => latlng);
@@ -249,14 +316,15 @@ const setGpx = (map, infos, {span = 60, size = 10, colors = ["cyan", "magenta"]}
 
   // info popup
   const picked = infos.filter((info, i) => i % span === 0 || i === infos.length - 1);
-  const colorFactor = colors.length / picked.length;
-  picked.forEach((info, i) => {
+  const colorFactor = colors.length / infos.length;
+  infos.forEach((info, i) => {
+    if (i % span !== 0 && i !== infos.length - 1) return;
     const color = colors[Math.trunc(i * colorFactor)];
     const mark = infoMark(info.latlng, info.angle, color, size);
     mark.addTo(layer).
       on("mouseover", ev => ev.target.openPopup()).on("mouseout", ev => ev.target.closePopup()).
       on("mousedown", ev => ev.target.openPopup()).
-      bindPopup(infoPopup(info));
+      bindPopup(infoPopup(infos, maxSpeedTree, i));
   });
   return layer;
 };
