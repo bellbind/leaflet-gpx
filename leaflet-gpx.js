@@ -66,6 +66,7 @@ const LeafletGpx = class extends HTMLElement {
       if (!this.cursor) return;
       if (ev.code === "ArrowDown") {
         this.homeSlider.value = this.slider.value;
+        this.home.setLatLng(this.infos[this.homeSlider.value | 0].latlng);
       } else if (ev.code === "ArrowUp") {
         this.slider.value = this.homeSlider.value;
       } else {
