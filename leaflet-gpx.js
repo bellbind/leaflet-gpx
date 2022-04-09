@@ -120,7 +120,7 @@ const gpxInfo = gpx => {
   const infos = [...gpx.querySelectorAll("trkpt")].map(trkpt => ({
     latlng: new L.LatLng(Number(trkpt.getAttribute("lat")), Number(trkpt.getAttribute("lon"))),
     date: new Date(trkpt.querySelector("time")?.textContent),
-    //speed: Number(trkpt.querySelector("speed")?.textContent),
+    speed: Number(trkpt.querySelector("speed")?.textContent),
     ele: Number(trkpt.querySelector("ele")?.textContent),
     sat: Number(trkpt.querySelector("sat")?.textContent),
   }));
@@ -128,8 +128,7 @@ const gpxInfo = gpx => {
     info.distance = i === 0 ? 0 : infos[i - 1].distance + info.latlng.distanceTo(infos[i - 1].latlng);
     info.speed ??= i === 0 ? 0 : 1000 * info.latlng.distanceTo(infos[i - 1].latlng) / (info.date.getTime() - infos[i - 1].date.getTime());
     info.time = info.date.getTime() - infos[0].date.getTime();
-    info.moving = i === 0 ? 0 :
-      infos[i - 1].moving + (info.speed > 0 ? info.date.getTime() - infos[i - 1].date.getTime() : 0);
+    info.moving = i === 0 ? 0 : infos[i - 1].moving + (info.speed > 0 ? info.date.getTime() - infos[i - 1].date.getTime() : 0);
     info.angle = i === 0 ? null : direction(info.latlng, infos[i - 1].latlng);
     info.maxSpeed = i === 0 ? 0 : Math.max(infos[i - 1].maxSpeed, info.speed);
     info.lpEle = i === 0 ? info.ele : infos[i - 1].lpEle * 0.95 + info.ele * 0.05; // low-pass 1/20
