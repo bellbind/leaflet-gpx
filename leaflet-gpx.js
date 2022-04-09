@@ -120,7 +120,7 @@ const gpxInfo = gpx => {
   const infos = [...gpx.querySelectorAll("trkpt")].map(trkpt => ({
     latlng: new L.LatLng(Number(trkpt.getAttribute("lat")), Number(trkpt.getAttribute("lon"))),
     date: new Date(trkpt.querySelector("time")?.textContent),
-    speed: Number(trkpt.querySelector("speed")?.textContent),
+    //speed: Number(trkpt.querySelector("speed")?.textContent),
     ele: Number(trkpt.querySelector("ele")?.textContent),
     sat: Number(trkpt.querySelector("sat")?.textContent),
   }));
