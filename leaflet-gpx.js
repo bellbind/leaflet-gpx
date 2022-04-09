@@ -126,7 +126,7 @@ const gpxInfo = gpx => {
   }));
   infos.forEach((info, i) => {
     info.distance = i === 0 ? 0 : infos[i - 1].distance + info.latlng.distanceTo(infos[i - 1].latlng);
-    info.speed ??= i === 0 ? 0 : info.latlng.distanceTo(infos[i - 1].latlng) / (info.date.getTime() - infos[i - 1].date.getTime());
+    info.speed ??= i === 0 ? 0 : 1000 * info.latlng.distanceTo(infos[i - 1].latlng) / (info.date.getTime() - infos[i - 1].date.getTime());
     info.time = info.date.getTime() - infos[0].date.getTime();
     info.moving = i === 0 ? 0 :
       infos[i - 1].moving + (info.speed > 0 ? info.date.getTime() - infos[i - 1].date.getTime() : 0);
