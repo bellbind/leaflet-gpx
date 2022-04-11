@@ -274,14 +274,16 @@ const findMaxSpeed = (infos, maxSpeedTree, index, baseIndex) => {
   return getMaxSpeed(maxSpeedTree, Math.min(index, baseIndex), Math.max(index, baseIndex) + 1); 
 };
 const infoPopup = (infos, maxSpeedTree, index, baseIndex = 0) => {
-  const info = infos[index], base = infos[baseIndex];
+  const isSpan = baseIndex <= index;
+  const info = infos[index], base = infos[baseIndex], last = infos[infos.length - 1];;
   const {latlng, date, speed, ele} = info;
-  const maxSpeed = findMaxSpeed(infos, maxSpeedTree, index, baseIndex);
-  const distance = Math.abs(info.distance - base.distance);
-  const time = Math.abs(info.time - base.time);
-  const moving = Math.abs(info.moving - base.moving);
-  const elePlus = Math.abs(info.elePlus - base.elePlus);
-  const eleMinus = Math.abs(info.eleMinus - base.eleMinus);
+  const maxSpeed = isSpan ? findMaxSpeed(infos, maxSpeedTree, index, baseIndex) :
+        Math.max(findMaxSpeed(infos, maxSpeedTree, 0, index), findMaxSpeed(infos, maxSpeedTree, baseIndex, infos.length - 1));
+  const distance = isSpan ? info.distance - base.distance : info.distance + last.distance - base.distance;
+  const time = isSpan ? info.time - base.time : info.time + last.time - base.time;
+  const moving = isSpan ? info.moving - base.moving : info.moving + last.moving - base.moving;
+  const elePlus = isSpan ? info.elePlus - base.elePlus : info.elePlus + last.elePlus - base.elePlus;
+  const eleMinus = isSpan ? info.eleMinus - base.eleMinus : info.eleMinus + last.eleMinus - base.eleMinus;
   const lat = Math.abs(latlng.lat), lng = Math.abs(latlng.lng);
   const ns = "NS"[Number(Math.sign(latlng.lat) < 0)], ew = "EW"[Number(Math.sign(latlng.lng) < 0)];
   const total = msecToTime(time);
