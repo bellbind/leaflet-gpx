@@ -14,8 +14,17 @@ const options = index.map(gpx => {
 });
 chooser.append(...options);
 
-const gpx = index.find(({href}) => href === location.hash.replace(/#/, ""));
+viewer.addEventListener("cursor-changed", ({detail: {cursor, home}}) => {
+  const hash = location.hash.replace(/#/, "");
+  const file = hash.includes("?") ? hash.slice(0, hash.indexOf("?")) : hash;
+  location.hash = `${file}?${new URLSearchParams(viewer.getCursor())}`;
+});
+
+const hash = location.hash.replace(/#/, "");
+const file = hash.includes("?") ? hash.slice(0, hash.indexOf("?")) : hash;
+const params = Object.fromEntries(new URLSearchParams(hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : ""));
+const gpx = index.find(({href}) => href === file);
 if (gpx) {
-  fetch(gpx.href).then(res => res.text()).then(xml => viewer.setGpx(xml));
+  fetch(gpx.href).then(res => res.text()).then(xml => viewer.setGpx(xml).setCursor(params));
   chooser.value = gpx.href;
 }
