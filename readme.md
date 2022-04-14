@@ -1,6 +1,6 @@
 # HTML custom element for GPX file viewer <leaflet-gpx>
 
-- demo: https://bellbind.github.io/leaflet-gpx/
+- demo: https://bellbind.github.io/leaflet-gpx-element/
 
 ## Usage
 
@@ -37,10 +37,10 @@ Decorations for steps
 
 ## Working [examples](./examples/)
 
-- [simple-url.html](https://bellbind.github.io/leaflet-gpx/examples/simple-url.html): `<leaflet-gpx>` with `data-src` only
-- [customized-url.html](https://bellbind.github.io/leaflet-gpx/examples/customized-url.html): `<leaflet-gpx>` with customzing attributes
-- [file.html](https://bellbind.github.io/leaflet-gpx/examples/file.html): Displaying a local GPX file with `setGpx(xml)` method
-- [dnd.html](https://bellbind.github.io/leaflet-gpx/examples/dnd.html): Displaying a Drag & Drop-ed GPX file with `setGpx(xml)` method
+- [simple-url.html](https://bellbind.github.io/leaflet-gpx-element/examples/simple-url.html): `<leaflet-gpx>` with `data-src` only
+- [customized-url.html](https://bellbind.github.io/leaflet-gpx-element/examples/customized-url.html): `<leaflet-gpx>` with customzing attributes
+- [file.html](https://bellbind.github.io/leaflet-gpx-element/examples/file.html): Displaying a local GPX file with `setGpx(xml)` method
+- [dnd.html](https://bellbind.github.io/leaflet-gpx-element/examples/dnd.html): Displaying a Drag & Drop-ed GPX file with `setGpx(xml)` method
 
 ## `<leaflet-gpx>` attributes
 
