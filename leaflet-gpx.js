@@ -41,6 +41,7 @@ const LeafletGpx = class extends HTMLElement {
       this.cursor.setPopupContent(infoPopup(this.infos, this.maxSpeedTree, slider.value | 0, homeSlider.value | 0));
       this.cursor.openPopup();
       this.map.setView(info.latlng, this.map.getZoom());
+      this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
     });
 
     // home
@@ -58,6 +59,7 @@ const LeafletGpx = class extends HTMLElement {
       const info = this.infos[homeSlider.value | 0];
       this.home.setLatLng(info.latlng);
       this.cursor.setPopupContent(infoPopup(this.infos, this.maxSpeedTree, slider.value | 0, homeSlider.value | 0));
+      this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
     });
     
     // slider keybind
@@ -79,8 +81,8 @@ const LeafletGpx = class extends HTMLElement {
       const info = this.infos[this.slider.value | 0];
       this.cursor.setLatLng(info.latlng);
       this.cursor.setPopupContent(infoPopup(this.infos, this.maxSpeedTree, slider.value | 0, homeSlider.value | 0));
-      this.cursor.openPopup();
       this.map.setView(info.latlng, this.map.getZoom());
+      this.cursor.openPopup();
     });
 
     
@@ -114,6 +116,22 @@ const LeafletGpx = class extends HTMLElement {
       this.map.setView([0, 0], 0);
     }
   }
+  getCursor() {
+    return {cursor: Number(this.slider.value), home: Number(this.homeSlider.value)};
+  }
+  setCursor({cursor, home} = {}) {
+    if (!this.cursor) return;
+    if (cursor !== undefined) this.slider.value = Math.min(Math.max(0, Number(cursor)), Number(this.slider.max));;
+    if (home !== undefined) this.homeSlider.value = Math.min(Math.max(0, Number(home)), Number(this.homeSlider.max));
+    const info = this.infos[this.slider.value | 0];
+    this.home.setLatLng(this.infos[this.homeSlider.value | 0].latlng);
+    this.cursor.setLatLng(info.latlng);
+    this.cursor.setPopupContent(infoPopup(this.infos, this.maxSpeedTree, this.slider.value | 0, this.homeSlider.value | 0));
+    this.map.setView(info.latlng, this.map.getZoom());
+    this.cursor.openPopup();
+    this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
+    return this;
+  }
   clearGpx() {
     if (!this.layer) return;
     this.layer.remove();
@@ -123,6 +141,7 @@ const LeafletGpx = class extends HTMLElement {
     this.layer = this.cursor = this.control = this.home = null;
     this.slider.value = this.homeSlider.value = this.slider.max = this.homeSlider.max = 0;
     this.infos = this.maxSpeedTree = null;
+    return this;
   }
   setGpx(xml, dataset = this.dataset) {
     this.clearGpx();
@@ -158,6 +177,7 @@ const LeafletGpx = class extends HTMLElement {
       zIndexOffset: -1000,
     }).addTo(this.layer);
     this.control = setDownloadLink(this.map, gpx, xml);
+    return this;
   }
 };
 

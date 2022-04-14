@@ -57,7 +57,11 @@ Decorations for steps
 
 ## `LeafletGpx` class API
 
-- `this.setGpx(xml, dataset = this.dataset)`: update GPX XML text
+- `this.clearGpx()` -> `this`: remove a GPX Layer
+- `this.setGpx(xml, dataset = this.dataset)` -> `this`: update GPX XML text
+- `this.getCursor()` -> `{cursor: <non-negative integer>, home: <non-negative integer>}`: get cursor & home position
+- `this.setCursor({cursor, home} = {})` -> `this`: set cursor & home position
+
 - `this.map`: a `Map` object of Leaflet
 - `this.cursor`: a `Marker` object for slider controlling
 - `this.home`: a `Marker` object for base position of cursor info
@@ -66,6 +70,10 @@ Decorations for steps
 - `this.slider`: a `<input type="range">` element for moving the `cursor`
 - `this.homeSlider`: a `<input type="range">` element for moving the `home`
 - `this.control`: a `Control` object for the top-right download link panel
+
+## `leafletGpx` event API
+
+- `"cursor-changed"`: when values of cursor or home changed, where the `CustomEvent` has `event.detail: {cursor, home}`
 
 ## Reference
 
