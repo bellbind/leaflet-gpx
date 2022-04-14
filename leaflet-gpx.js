@@ -39,8 +39,8 @@ const LeafletGpx = class extends HTMLElement {
       const info = this.infos[slider.value | 0];
       this.cursor.setLatLng(info.latlng);
       this.cursor.setPopupContent(infoPopup(this.infos, this.maxSpeedTree, slider.value | 0, homeSlider.value | 0));
-      this.cursor.openPopup();
       this.map.setView(info.latlng, this.map.getZoom());
+      this.cursor.openPopup();
       this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
     });
 
@@ -83,6 +83,7 @@ const LeafletGpx = class extends HTMLElement {
       this.cursor.setPopupContent(infoPopup(this.infos, this.maxSpeedTree, slider.value | 0, homeSlider.value | 0));
       this.map.setView(info.latlng, this.map.getZoom());
       this.cursor.openPopup();
+      this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
     });
 
     
