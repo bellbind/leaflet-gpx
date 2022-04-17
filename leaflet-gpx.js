@@ -117,6 +117,52 @@ const LeafletGpx = class extends HTMLElement {
       this.map.setView([0, 0], 0);
     }
   }
+  clearGpx() {
+    if (!this.layer) return;
+    this.layer.remove();
+    this.control.remove();
+    this.cursor.remove();
+    this.home.remove();
+    this.layer = this.cursor = this.control = this.home = null;
+    this.slider.value = this.homeSlider.value = this.slider.max = this.homeSlider.max = 0;
+    this.infos = this.maxSpeedTree = null;
+    return this;
+  }
+  setGpx(xml, dataset = this.dataset) {
+    return this.setGpxPath(this.createGpxPath(xml, dataset), dataset);
+  }
+  
+  createGpxPath(xml, dataset = this.dataset) {
+    const gpx = new DOMParser().parseFromString(xml, "application/xml");
+    const infos = gpxInfo(gpx);
+    const maxSpeedTree = createMaxSpeedTree(infos);
+    
+    const dataSpan = Math.trunc(dataset.infoSpan);
+    const dataSize = Number(dataset.infoSize);
+    const dataColors = dataset.infoColors?.split(",")?.map(c => c.trim()) ?? [];
+    const span = dataSpan > 0 ? dataSpan : 60;
+    const size = dataSpan > 0 ? dataSize : 10;
+    const colors = dataColors.length > 0 ? dataColors : ["cyan", "magenta"];
+    const layer = createGpxLayer(infos, maxSpeedTree, {span, size, colors});
+    return {layer, gpx, xml, infos, maxSpeedTree};
+  }
+  setGpxPath({layer, gpx, xml, infos, maxSpeedTree}, dataset = this.dataset) {
+    this.clearGpx();
+    [this.layer, this.infos, this.maxSpeedTree] = [layer, infos, maxSpeedTree];
+    this.slider.value = this.homeSlider.value = 0;
+    this.slider.max = this.homeSlider.max = this.infos.length - 1;
+    this.layer.addTo(this.map);
+    this.map.fitBounds(this.layer.getBounds());
+    
+    const cursorText = dataset.cursorText ?? "&#x1f3c3;";
+    const homeText = dataset.homeText ?? "&#x1f3e0;";
+    const {cursor, home} = createCursorHome(infos, maxSpeedTree, {cursorText, homeText});
+    this.cursor = cursor.addTo(this.map);
+    this.home = home.addTo(this.map);
+    this.control = createDownloadLink(gpx, xml).addTo(this.map);
+    return this;
+  }
+  
   getCursor() {
     return {cursor: Number(this.slider.value), home: Number(this.homeSlider.value)};
   }
@@ -131,53 +177,6 @@ const LeafletGpx = class extends HTMLElement {
     this.map.setView(info.latlng, this.map.getZoom());
     this.cursor.openPopup();
     this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
-    return this;
-  }
-  clearGpx() {
-    if (!this.layer) return;
-    this.layer.remove();
-    this.control.remove();
-    this.cursor.remove();
-    this.home.remove();
-    this.layer = this.cursor = this.control = this.home = null;
-    this.slider.value = this.homeSlider.value = this.slider.max = this.homeSlider.max = 0;
-    this.infos = this.maxSpeedTree = null;
-    return this;
-  }
-  setGpx(xml, dataset = this.dataset) {
-    this.clearGpx();
-    const dataSpan = Math.trunc(dataset.infoSpan);
-    const dataSize = Number(dataset.infoSize);
-    const dataColors = dataset.infoColors?.split(",")?.map(c => c.trim()) ?? [];
-    const span = dataSpan > 0 ? dataSpan : 60;
-    const size = dataSpan > 0 ? dataSize : 10;
-    const colors = dataColors.length > 0 ? dataColors : ["cyan", "magenta"];
-    const cursorText = dataset.cursorText ?? "&#x1f3c3;";
-    const homeText = dataset.homeText ?? "&#x1f3e0;";
-    const gpx = new DOMParser().parseFromString(xml, "application/xml");
-    const infos = this.infos = gpxInfo(gpx);
-    const maxSpeedTree = this.maxSpeedTree = createMaxSpeedTree(infos);
-    this.slider.value = this.homeSlider.value = 0;
-    this.slider.max = this.homeSlider.max = this.infos.length - 1;
-    this.layer = setGpx(this.map, this.infos, this.maxSpeedTree, {span, size, colors});
-    this.cursor = L.marker(this.infos[0].latlng, {
-      icon: L.divIcon({
-        html: `<span style="font-size: 30px; vertical-slign: middle;">${cursorText}</span>`,
-        iconSize: [0, 0],
-        iconAnchor: [15, 30],
-        popupAnchor: [0, -15],
-      }),
-    }).addTo(this.layer).bindPopup(infoPopup(this.infos, this.maxSpeedTree, 0));
-    this.home = L.marker(this.infos[0].latlng, {
-      icon: L.divIcon({
-        html: `<span style="font-size: 30px; vertical-slign: middle;">${homeText}</span>`,
-        iconSize: [0, 0],
-        iconAnchor: [15, 30],
-        popupAnchor: [0, -15],
-      }),
-      zIndexOffset: -1000,
-    }).addTo(this.layer);
-    this.control = setDownloadLink(this.map, gpx, xml);
     return this;
   }
 };
@@ -330,14 +329,12 @@ const infoPopup = (infos, maxSpeedTree, index, baseIndex = 0) => {
   return `<pre style='font-size: 12px; font-family: "Noto Mono", "Menlo", "Consolas", monospace !important;'>${labels}</pre>`;
 };
 
-const setGpx = (map, infos, maxSpeedTree, {span = 60, size = 10, colors = ["cyan", "magenta"]} = {}) => {
+const createGpxLayer = (infos, maxSpeedTree, {span = 60, size = 10, colors = ["cyan", "magenta"]} = {}) => {
   // path
-  const layer = L.layerGroup().addTo(map);
+  const layer = L.featureGroup()
   const coords = infos.map(({latlng}) => latlng);
   const path = L.polyline(coords, {color: "blue", weight: 5, opacity: 0.5}).addTo(layer);
-
-  map.fitBounds(path.getBounds());
-
+  
   // info popup
   const picked = infos.filter((info, i) => i % span === 0 || i === infos.length - 1);
   const colorFactor = colors.length / infos.length;
@@ -353,7 +350,28 @@ const setGpx = (map, infos, maxSpeedTree, {span = 60, size = 10, colors = ["cyan
   return layer;
 };
 
-const setDownloadLink = (map, gpx, xml) => {
+const createCursorHome = (infos, maxSpeedTree, {cursorText, homeText}) => {
+  const cursor = L.marker(infos[0].latlng, {
+    icon: L.divIcon({
+      html: `<span style="font-size: 30px; vertical-slign: middle;">${cursorText}</span>`,
+      iconSize: [0, 0],
+      iconAnchor: [15, 30],
+      popupAnchor: [0, -15],
+    }),
+  }).bindPopup(infoPopup(infos, maxSpeedTree, 0));
+  const home = L.marker(infos[0].latlng, {
+    icon: L.divIcon({
+      html: `<span style="font-size: 30px; vertical-slign: middle;">${homeText}</span>`,
+      iconSize: [0, 0],
+      iconAnchor: [15, 30],
+      popupAnchor: [0, -15],
+    }),
+    zIndexOffset: -1000,
+  });
+  return {cursor, home};
+};
+
+const createDownloadLink = (gpx, xml) => {
   const name = gpx.querySelector("name")?.textContent?.replaceAll(/[ :]/g, "_") ?? "untitled";
   const fileName = `${name}.gpx`;
   const dataUrl = `data:application/xml,${encodeURIComponent(xml)}`;
@@ -368,8 +386,7 @@ const setDownloadLink = (map, gpx, xml) => {
       return download;
     }
   });
-  const control = new DownloadControl().addTo(map);
-  return control;
+  return new DownloadControl();
 };
 
 // must register at last
