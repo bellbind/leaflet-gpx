@@ -5,13 +5,13 @@ const clear = () => {
   viewer.clearGpx();
   viewer.map.setView([0, 0], 0);
 };
-const load = (file) => {
+const load = async (file) => {
   if (cache.has(file)) {
     const gpxPath = cache.get(file);
     viewer.setGpxPath(gpxPath);
     return;
   }
-  fetch(file).then(res => res.text()).then(xml => {
+  return fetch(file).then(res => res.text()).then(xml => {
     const gpxPath = viewer.createGpxPath(xml);
     viewer.setGpxPath(gpxPath);
     cache.set(chooser.value, gpxPath);
@@ -38,8 +38,9 @@ chooser.addEventListener("change", ev => {
     clear();
     history.replaceState(null, null, location.pathname);
   } else {
-    load(chooser.value);
-    history.pushState(chooser.value, null, `${location.pathname}#${chooser.value}`);
+    load(chooser.value).then(() => {
+      history.pushState(chooser.value, null, `${location.pathname}#${chooser.value}`);
+    });
   }
 });
 
@@ -53,11 +54,10 @@ const loadHashState = () => {
   const file = hash.includes("?") ? hash.slice(0, hash.indexOf("?")) : hash;
   const cursor = Object.fromEntries(new URLSearchParams(hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : ""));
   const gpx = index.find(({href}) => href === file);
-  if (gpx) {
-    load(gpx.href);
+  if (gpx) load(gpx.href).then(() => {
     viewer.setCursor(cursor);
     chooser.value = gpx.href;
-  }
+  });
 };
 loadHashState();
 window.addEventListener("popstate", loadHashState);
