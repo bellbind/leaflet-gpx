@@ -1,20 +1,40 @@
 // <leaflet-gpx> with cache
 const viewer = document.getElementById("viewer");
 const cache = new Map();
+const keep = document.getElementById("keep");
+const prevLayers = new Set();
+const keepLayers = layer => {
+  if (!layer) return;
+  if (!keep.checked) {
+    for (const layer of prevLayers) if (layer !== viewer.layer) layer.remove();
+    prevLayers.clear();
+    return;
+  }
+  if (!prevLayers.has(layer)) {
+    layer.addTo(viewer.map);
+    prevLayers.add(layer);
+  }
+};
 const clear = () => {
+  const layer = viewer.layer;
   viewer.clearGpx();
+  keepLayers(layer);
   viewer.map.setView([0, 0], 0);
 };
 const load = async (file) => {
   if (cache.has(file)) {
+    const layer = viewer.layer;
     const gpxPath = cache.get(file);
     viewer.setGpxPath(gpxPath);
+    keepLayers(layer);
     return;
   }
   return fetch(file).then(res => res.text()).then(xml => {
+    const layer = viewer.layer;
     const gpxPath = viewer.createGpxPath(xml);
     viewer.setGpxPath(gpxPath);
     cache.set(chooser.value, gpxPath);
+    keepLayers(layer);
   });
 };
 // Event "cursor-changed" from <leaflet-gpx>
