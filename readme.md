@@ -50,6 +50,8 @@ Decorations for steps
 - `data-info-colors`: comma separated color names (default: `"cyan,magenta"`)
 - `data-cursor-text`: cursor icon text (default: `"&#x1f3c3;"` as "Runner" emoji)
 - `data-home-text`: cursor icon text (default: `"&#x1f3e0;"` as "House" emoji)
+- `data-tile-template`: tile template url (default: `"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"`)
+- `data-attribution`: Leaflet attribution panel (default: `"&copy; &lt;a href="https://www.openstreetmap.org/copyright"&gt;OpenStreetMap&lt;/a&gt; contributors"`)
 
 ### Unstable features
 
@@ -65,6 +67,7 @@ Decorations for steps
 - `this.setGpxPath(gpxPath, dataset = this.dataset)` -> `this`: set GPX Path layer 
 
 - `this.map`: a `Map` object of Leaflet
+- `this.tile`: a `TileLayer` of Leaflet
 - `this.cursor`: a `Marker` object for slider controlling
 - `this.home`: a `Marker` object for base position of cursor info
 - `this.layer`: a `LayerGroup` object contains lines, markers, and the `cursor`

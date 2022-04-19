@@ -94,27 +94,20 @@ const LeafletGpx = class extends HTMLElement {
     container.append(mapDiv);
     container.append(control);
     shadow.append(container);
-
-    const map = this.map = L.map(mapDiv);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: `&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors`,
-    }).addTo(map);
+    const map = this.map = L.map(mapDiv).setView([0, 0], 0);
+    //this.map.locate({setView: true, maxZoom: 16});
   }
   connectedCallback() {
-    if (this.layer) return;  
+    if (!this.tile) {
+      const tileTemplate = this.dataset.tileTemplate ?? "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+      const attribution = this.dataset.attribution ?? `&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors`;
+      this.tile = L.tileLayer(tileTemplate, {attribution}).addTo(this.map);
+    }
+    if (this.layer) return;
     if (this.dataset.src) {
-      loadGpxFromUrl(this.dataset.src).then(xml => this.setGpx(xml, this.dataset), error => {
-        this.map.setView([0, 0], 0);
-        throw error;
-      }).catch(console.error);
+      loadGpxFromUrl(this.dataset.src).then(xml => this.setGpx(xml, this.dataset)).catch(console.error);
     } else if (this.dataset.ipfsCid) {
-      loadGpxFromCid(this.dataset.ipfsCid).then(xml => this.setGpx(xml, this.dataset), error => {
-        this.map.setView([0, 0], 0);
-        throw error;
-      }).catch(console.error);
-    } else {
-      //this.map.locate({setView: true, maxZoom: 16});
-      this.map.setView([0, 0], 0);
+      loadGpxFromCid(this.dataset.ipfsCid).then(xml => this.setGpx(xml, this.dataset)).catch(console.error);
     }
   }
   clearGpx() {
