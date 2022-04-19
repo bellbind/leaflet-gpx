@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Demo of &lt;leaflet-gpx&gt; custom element</title>
+    <title>&lt;leaflet-gpx&gt; custom HTML element demo</title>
     <link rel="icon" href="data:img/x-icon," />
     <script type="module" src="./leaflet-gpx.js"></script>
     <script type="module" src="./main.js"></script>
@@ -13,10 +13,14 @@
       <select style="font-size: 2vh; flex: 1;" id="chooser"><option>- Choose GPX -</option></select>
       <label style="margin-left: 1vw;"><input id="keep" type="checkbox" /> Keep previous routes</label>
     </div>
-    <leaflet-gpx id="viewer"
+    <leaflet-gpx
+      id="viewer"
       style="width: 100vw; flex: 1;"
       data-info-span="60" data-info-size="20" data-info-colors="red,blue"
       data-cursor-text="&#x1f6b4;"
+      data-attribution="
+&copy; &lt;a href='https://www.openstreetmap.org/copyright'&gt;OpenStreetMap&lt;/a&gt; contributors |
+See &lt;a href='https://github.com/bellbind/leaflet-gpx-element/'&gt;@bellbind/leaflet-gpx-element&lt;/&gt;"
       ></leaflet-gpx>
   </body>
 </html>
