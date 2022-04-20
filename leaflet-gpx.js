@@ -1,4 +1,4 @@
-import * as L from "https://unpkg.com/leaflet@1.7.1/dist/leaflet-src.esm.js";
+import * as L from "https://unpkg.com/leaflet@1.8.0/dist/leaflet-src.esm.js";
 
 const LeafletGpx = class extends HTMLElement {
   constructor() {
@@ -89,7 +89,7 @@ const LeafletGpx = class extends HTMLElement {
     
     //leaflet css
     const cssLink = this.ownerDocument.createElement("link");
-    [cssLink.rel, cssLink.href] = ["stylesheet", "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"];
+    [cssLink.rel, cssLink.href] = ["stylesheet", "https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"];
     mapDiv.append(cssLink);
     container.append(mapDiv);
     container.append(control);
