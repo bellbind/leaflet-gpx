@@ -13,24 +13,38 @@ const LeafletGpx = class extends HTMLElement {
     const style = window.getComputedStyle(this);
     [container.style.width, container.style.height] = [style.width, style.height];
     window.addEventListener("resize", ev => {
-      [container.style.width, container.style.height] = [style.width, style.height];      
+      [container.style.width, container.style.height] = [style.width, style.height];
     });
-    
     const mapDiv = this.ownerDocument.createElement("div");
-    mapDiv.style.flex = "1";
+    //const mapStyle = window.getComputedStyle(mapDiv);
+    new ResizeObserver(() => {
+      this.map.invalidateSize(true);
+    }).observe(mapDiv);
+    mapDiv.style.flex = "9";
 
     const control = this.ownerDocument.createElement("div");
+    mapDiv.style.flex = "1";
     control.style.minHeight = "10%";
     control.style.display = "flex";
     control.style.alignItems = "center";
     control.style.justifyContent = "center";
     control.style.flexDirection = "column";
+
+    const graph = this.graph = document.createElement("canvas");
+    graph.style.position = "absolute";
+    graph.style.height = "5%";
+    graph.style.width = "90%";
+    graph.style.zIndex = "-1";
+    bindGraph(this);
+    control.append(graph);
     
     const slider = this.slider = this.ownerDocument.createElement("input");
     slider.style.flex = "1";
     slider.style.width = "90%";
     
     slider.style.marginLeft = slider.style.marginRight = "5%";
+    slider.style.backgroundColor = "rgba(0, 0, 0, 0)";
+    
     slider.type = "range";
     slider.value = slider.min = slider.max = 0;
     control.append(slider);
@@ -41,6 +55,7 @@ const LeafletGpx = class extends HTMLElement {
       this.cursor.setPopupContent(infoPopup(this.infos, this.segTrees, slider.value | 0, homeSlider.value | 0));
       this.map.setView(info.latlng, this.map.getZoom());
       this.cursor.openPopup();
+      drawGraphs(this);
       this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
     });
 
@@ -49,6 +64,7 @@ const LeafletGpx = class extends HTMLElement {
     homeSlider.style.flex = "1";
     homeSlider.style.width = "90%";
     homeSlider.style.webkitAppearance = "none"; 
+    homeSlider.style.backgroundColor = "rgba(0, 0, 0, 0)";
     
     homeSlider.style.marginLeft = homeSlider.style.marginRight = "5%";
     homeSlider.type = "range";
@@ -59,6 +75,7 @@ const LeafletGpx = class extends HTMLElement {
       const info = this.infos[homeSlider.value | 0];
       this.home.setLatLng(info.latlng);
       this.cursor.setPopupContent(infoPopup(this.infos, this.segTrees, slider.value | 0, homeSlider.value | 0));
+      drawGraphs(this);
       this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
     });
     
@@ -83,9 +100,9 @@ const LeafletGpx = class extends HTMLElement {
       this.cursor.setPopupContent(infoPopup(this.infos, this.segTrees, slider.value | 0, homeSlider.value | 0));
       this.map.setView(info.latlng, this.map.getZoom());
       this.cursor.openPopup();
+      drawGraphs(this);
       this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
     });
-
     
     //leaflet css
     const cssLink = this.ownerDocument.createElement("link");
@@ -119,6 +136,7 @@ const LeafletGpx = class extends HTMLElement {
     this.layer = this.cursor = this.control = this.home = null;
     this.slider.value = this.homeSlider.value = this.slider.max = this.homeSlider.max = 0;
     this.infos = this.segTrees = null;
+    drawGraphs(this);
     return this;
   }
   setGpx(xml, dataset = this.dataset) {
@@ -150,7 +168,8 @@ const LeafletGpx = class extends HTMLElement {
     this.slider.max = this.homeSlider.max = this.infos.length - 1;
     this.layer.addTo(this.map);
     this.map.fitBounds(this.layer.getBounds());
-    
+    drawGraphs(this);
+
     const cursorText = dataset.cursorText ?? "&#x1f3c3;";
     const homeText = dataset.homeText ?? "&#x1f3e0;";
     const {cursor, home} = createCursorHome(infos, segTrees, {cursorText, homeText});
@@ -173,6 +192,7 @@ const LeafletGpx = class extends HTMLElement {
     this.cursor.setPopupContent(infoPopup(this.infos, this.segTrees, this.slider.value | 0, this.homeSlider.value | 0));
     this.map.setView(info.latlng, this.map.getZoom());
     this.cursor.openPopup();
+    drawGraphs(this);
     this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
     return this;
   }
@@ -444,6 +464,49 @@ const createDownloadLink = (gpx, xml) => {
   });
   return new DownloadControl();
 };
+
+
+const drawGraphs = self => {
+  const {graph, infos} = self;
+  const c2d = graph.getContext("2d");
+  c2d.save();
+  c2d.scale(graph.width, graph.height);
+  c2d.clearRect(0, 0, 1, 1);
+  if (infos) {
+    c2d.fillStyle = "rgba(0, 0, 0, 0.25)";
+    const cursor = self.slider.value / (infos.length - 1), home = self.homeSlider.value / (infos.length - 1);
+    if (home <= cursor) {
+      c2d.fillRect(home, 0, cursor - home, 1);
+    } else {
+      c2d.fillRect(0, 0, cursor, 1);
+      c2d.fillRect(home, 0, 1 - home, 1);
+    }
+    c2d.fillStyle = "hsla(30, 75%, 50%, 0.75)";
+    drawGraph(c2d, infos.map(({ele}) => ele));
+  }
+  c2d.restore();
+};
+const bindGraph = self => {
+  new ResizeObserver(entries => {
+    drawGraphs(self);
+  }).observe(self.graph);
+};
+const drawGraph = (c2d, values) => {
+  let max = -Infinity, min = Infinity;
+  for (const v of values) [max, min] = [Math.max(max, v), Math.min(min, v)];
+  const scale = max - min;
+  if (scale === 0) return;
+  c2d.beginPath();
+  c2d.moveTo(0, 1);
+  for (let i = 0; i < values.length; i++) {
+    const x = i / (values.length - 1), y = 1 - (values[i] - min) / scale;
+    c2d.lineTo(x, y);
+  }
+  c2d.lineTo(1, 1);
+  c2d.closePath();
+  c2d.fill();
+};
+
 
 // must register at last
 customElements.define("leaflet-gpx", LeafletGpx, {});
