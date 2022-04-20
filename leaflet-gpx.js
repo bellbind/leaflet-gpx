@@ -38,7 +38,7 @@ const LeafletGpx = class extends HTMLElement {
       if (!this.cursor) return;
       const info = this.infos[slider.value | 0];
       this.cursor.setLatLng(info.latlng);
-      this.cursor.setPopupContent(infoPopup(this.infos, this.maxSpeedTree, slider.value | 0, homeSlider.value | 0));
+      this.cursor.setPopupContent(infoPopup(this.infos, this.segTrees, slider.value | 0, homeSlider.value | 0));
       this.map.setView(info.latlng, this.map.getZoom());
       this.cursor.openPopup();
       this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
@@ -58,7 +58,7 @@ const LeafletGpx = class extends HTMLElement {
       if (!this.home) return;
       const info = this.infos[homeSlider.value | 0];
       this.home.setLatLng(info.latlng);
-      this.cursor.setPopupContent(infoPopup(this.infos, this.maxSpeedTree, slider.value | 0, homeSlider.value | 0));
+      this.cursor.setPopupContent(infoPopup(this.infos, this.segTrees, slider.value | 0, homeSlider.value | 0));
       this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
     });
     
@@ -80,7 +80,7 @@ const LeafletGpx = class extends HTMLElement {
       ev.preventDefault();
       const info = this.infos[this.slider.value | 0];
       this.cursor.setLatLng(info.latlng);
-      this.cursor.setPopupContent(infoPopup(this.infos, this.maxSpeedTree, slider.value | 0, homeSlider.value | 0));
+      this.cursor.setPopupContent(infoPopup(this.infos, this.segTrees, slider.value | 0, homeSlider.value | 0));
       this.map.setView(info.latlng, this.map.getZoom());
       this.cursor.openPopup();
       this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
@@ -118,7 +118,7 @@ const LeafletGpx = class extends HTMLElement {
     this.home.remove();
     this.layer = this.cursor = this.control = this.home = null;
     this.slider.value = this.homeSlider.value = this.slider.max = this.homeSlider.max = 0;
-    this.infos = this.maxSpeedTree = null;
+    this.infos = this.segTrees = null;
     return this;
   }
   setGpx(xml, dataset = this.dataset) {
@@ -129,6 +129,9 @@ const LeafletGpx = class extends HTMLElement {
     const gpx = new DOMParser().parseFromString(xml, "application/xml");
     const infos = gpxInfo(gpx);
     const maxSpeedTree = createMaxSpeedTree(infos);
+    const maxEleTree = createMaxEleTree(infos);
+    const minEleTree = createMinEleTree(infos);
+    const segTrees = {maxSpeedTree, maxEleTree, minEleTree};
     
     const dataSpan = Math.trunc(dataset.infoSpan);
     const dataSize = Number(dataset.infoSize);
@@ -137,11 +140,11 @@ const LeafletGpx = class extends HTMLElement {
     const size = dataSpan > 0 ? dataSize : 10;
     const colors = dataColors.length > 0 ? dataColors : ["cyan", "magenta"];
     const layer = createGpxLayer(infos, maxSpeedTree, {span, size, colors});
-    return {layer, gpx, xml, infos, maxSpeedTree};
+    return {layer, gpx, xml, infos, segTrees};
   }
-  setGpxPath({layer, gpx, xml, infos, maxSpeedTree}, dataset = this.dataset) {
+  setGpxPath({layer, gpx, xml, infos, maxSpeedTree, segTrees}, dataset = this.dataset) {
     this.clearGpx();
-    [this.layer, this.infos, this.maxSpeedTree] = [layer, infos, maxSpeedTree];
+    [this.layer, this.infos, this.segTrees] = [layer, infos, segTrees]; 
     this.slider.value = this.homeSlider.value = 0;
     this.slider.max = this.homeSlider.max = this.infos.length - 1;
     this.layer.addTo(this.map);
@@ -149,7 +152,7 @@ const LeafletGpx = class extends HTMLElement {
     
     const cursorText = dataset.cursorText ?? "&#x1f3c3;";
     const homeText = dataset.homeText ?? "&#x1f3e0;";
-    const {cursor, home} = createCursorHome(infos, maxSpeedTree, {cursorText, homeText});
+    const {cursor, home} = createCursorHome(infos, segTrees, {cursorText, homeText});
     this.cursor = cursor.addTo(this.map);
     this.home = home.addTo(this.map);
     this.control = createDownloadLink(gpx, xml).addTo(this.map);
@@ -166,7 +169,7 @@ const LeafletGpx = class extends HTMLElement {
     const info = this.infos[this.slider.value | 0];
     this.home.setLatLng(this.infos[this.homeSlider.value | 0].latlng);
     this.cursor.setLatLng(info.latlng);
-    this.cursor.setPopupContent(infoPopup(this.infos, this.maxSpeedTree, this.slider.value | 0, this.homeSlider.value | 0));
+    this.cursor.setPopupContent(infoPopup(this.infos, this.segTrees, this.slider.value | 0, this.homeSlider.value | 0));
     this.map.setView(info.latlng, this.map.getZoom());
     this.cursor.openPopup();
     this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
@@ -201,8 +204,11 @@ const gpxInfo = gpx => {
     info.speed ??= i === 0 ? 0 : 1000 * info.latlng.distanceTo(infos[i - 1].latlng) / (info.date.getTime() - infos[i - 1].date.getTime());
     info.time = info.date.getTime() - infos[0].date.getTime();
     info.moving = i === 0 ? 0 : infos[i - 1].moving + (info.speed > 0 ? info.date.getTime() - infos[i - 1].date.getTime() : 0);
-    info.angle = i === 0 ? null : direction(info.latlng, infos[i - 1].latlng);
-    info.maxSpeed = i === 0 ? 0 : Math.max(infos[i - 1].maxSpeed, info.speed);
+    //info.angle = i === 0 ? null : direction(info.latlng, infos[i - 1].latlng);
+    info.angle = i === 0 ? null : direction(infos[i - 1].latlng, info.latlng);
+    info.maxSpeed = i === 0 ? info.speed : Math.max(infos[i - 1].maxSpeed, info.speed);
+    info.maxEle = i === 0 ? info.ele : Math.max(infos[i - 1].maxEle, info.ele);
+    info.minEle = i === 0 ? info.ele : Math.min(infos[i - 1].minEle, info.ele);
     info.lpEle = i === 0 ? info.ele : infos[i - 1].lpEle * 0.95 + info.ele * 0.05; // low-pass 1/20
     info.elePlus = i === 0 ? 0 : infos[i - 1].elePlus + (info.speed > 0 && infos[i - 1].lpEle < info.lpEle ? info.lpEle - infos[i - 1].lpEle : 0);
     info.eleMinus = i === 0 ? 0 : infos[i - 1].eleMinus + (info.speed > 0 && infos[i - 1].lpEle > info.lpEle ? infos[i - 1].lpEle - info.lpEle : 0);
@@ -210,6 +216,7 @@ const gpxInfo = gpx => {
   return infos;
 }; 
 
+// direction and destination: the Earth as a sphere model
 const direction = (from, to) => {
   if (to.lat === from.lat && to.lng === from.lng) return null;
   const {PI, sin, cos, atan2} = Math, rad = PI / 180;
@@ -219,23 +226,36 @@ const direction = (from, to) => {
   const z = cosP1 * sinP2 - sinP1 * cosP2 * cos(dq);
   return atan2(y, z);
 };
+const destination = ({lat, lng}, angle, distance) => {
+  const {PI, sin, cos, asin, atan2} = Math, r = 6371000, rad = PI / 180;
+  const d = distance / r, p1 = lat * rad, q1 = lng * rad;
+  const cosP1 = cos(p1), sinP1 = sin(p1), cosD = cos(d), sinD = sin(d);
+  const sinP2 = sinP1 * cosD + cosP1 * sinD * cos(angle);
+  const p2 = asin(sinP2);
+  const q2 = q1 + atan2(cosP1 * sinD * sin(angle), cosD - sinP1 * sinP2);
+  return new L.LatLng(p2 / rad, q2 / rad);
+};
 
 // binary tree of the max value for maxSpeed search
-const createMaxTree = (values, start, last) => {
+const createSegTree = (values, start, last, binOp, uniOp = v => v) => {
   const length = last - start;
-  if (length === 1) return {max: values[start], start, last};
+  if (length === 1) return {v: uniOp(values[start]), start, last};
   const mid = start + (length >> 1);
-  const left = createMaxTree(values, start, mid);
-  const right = createMaxTree(values, mid, last);
-  return {max: Math.max(left.max, right.max), start, last, left, right};
+  const left = createSegTree(values, start, mid, binOp, uniOp);
+  const right = createSegTree(values, mid, last, binOp, uniOp);
+  return {v: binOp(left.v, right.v), start, last, left, right};
 };
-const getMax = (tree, min, start, last) => {
-  if (start <= tree.start && tree.last <= last) return tree.max; // when tree is complete inside
-  if (last <= tree.start || tree.last <= start) return min; // when tree is complete outside
-  return Math.max(getMax(tree.left, min, start, last), getMax(tree.right, min, start, last));
+const getSegValue = (tree, start, last, binOp, empty) => {
+  if (start <= tree.start && tree.last <= last) return tree.v; // when tree is complete inside
+  if (last <= tree.start || tree.last <= start) return empty; // when tree is complete outside
+  return binOp(getSegValue(tree.left, start, last, binOp, empty), getSegValue(tree.right, start, last, binOp, empty));
 };
-const createMaxSpeedTree = (infos) => createMaxTree(infos.map(({speed}) => speed), 0, infos.length);
-const getMaxSpeed = (tree, start, last) => getMax(tree, 0, start, last);
+const createMaxSpeedTree = (infos) => createSegTree(infos.map(({speed}) => speed), 0, infos.length, Math.max);
+const getMaxSpeed = (tree, start, last) => getSegValue(tree, start, last, Math.max, 0);
+const createMaxEleTree = (infos) => createSegTree(infos.map(({ele}) => ele), 0, infos.length, Math.max);
+const getMaxEle = (tree, start, last) => getSegValue(tree, start, last, Math.max, -Infinity);
+const createMinEleTree = (infos) => createSegTree(infos.map(({ele}) => ele), 0, infos.length, Math.min);
+const getMinEle = (tree, start, last) => getSegValue(tree, start, last, Math.min, Infinity);
 
 const msecToTime = msec => {
   const ms = msec % 1000;
@@ -252,20 +272,11 @@ const timeText = ({h, m, s, ms}) => {
 
 const infoMark = (latlng, angle, color, size) => {
   if (angle === null) return L.circle(latlng, {color, radius: size});
-  const leftAngle = angle - Math.PI / 9;
-  const rightAngle = angle + Math.PI / 9;
+  const leftAngle = angle + Math.PI - Math.PI / 9;
+  const rightAngle = angle + Math.PI + Math.PI / 9;
   const left = destination(latlng, leftAngle, size * 2);
   const right = destination(latlng, rightAngle, size * 2);
-  return L.polygon([left, latlng, right], {color});
-};
-const destination = ({lat, lng}, angle, distance) => {
-  const {PI, sin, cos, asin, atan2} = Math, r = 6371000, rad = PI / 180;
-  const d = distance / r, p1 = lat * rad, q1 = lng * rad;
-  const cosP1 = cos(p1), sinP1 = sin(p1), cosD = cos(d), sinD = sin(d);
-  const sinP2 = sinP1 * cosD + cosP1 * sinD * cos(angle);
-  const p2 = asin(sinP2);
-  const q2 = q1 + atan2(cosP1 * sinD * sin(angle), cosD - sinP1 * sinP2);
-  return new L.LatLng(p2 / rad, q2 / rad);
+  return L.polygon([left, latlng, right], {color}); // as arrow head
 };
 
 const degreeNf = new Intl.NumberFormat(undefined, {
@@ -280,18 +291,46 @@ const eleNf = new Intl.NumberFormat(undefined, {
 const distanceNf = new Intl.NumberFormat(undefined, {
   unit: "kilometer", style: "unit", unitDisplay: "narrow",
   maximumFractionDigits: 3, minimumFractionDigits: 3});
+const angleNf = new Intl.NumberFormat(undefined, {
+  unit: "degree", style: "unit", unitDisplay: "narrow",
+  maximumFractionDigits: 0});
+  
+const toClock = angle => {
+  const degree = angle / Math.PI * 180;
+  const minutes = ((angle / Math.PI + 2) % 2) * 6 * 60;
+  const m = Math.round(minutes % 60), h0 = Math.trunc(minutes / 60), h = h0 === 0 ? 12 : h0;
+  const arrowChar = "&#x2b06;";
+  const arrow = `<span style="display: inline-block; transform: rotate3d(0, 0, 1, ${degree}deg);">${arrowChar}</span>`;
+  return `${arrow} ${h.toString().padStart(2)}:${m.toString().padStart(2, "0")} (${angleNf.format(degree).padStart(4)})`;
+};
 
+// cursor => home ordering is as a hole of total loop
 const findMaxSpeed = (infos, maxSpeedTree, index, baseIndex) => {
   if (baseIndex === 0) return infos[index].maxSpeed;
   if (index === baseIndex) return infos[index].speed;
-  return getMaxSpeed(maxSpeedTree, Math.min(index, baseIndex), Math.max(index, baseIndex) + 1); 
+  if (baseIndex <= index) return getMaxSpeed(maxSpeedTree, baseIndex, index + 1);
+  return Math.max(getMaxSpeed(maxSpeedTree, 0, index + 1), getMaxSpeed(maxSpeedTree, baseIndex, infos.length));
 };
-const infoPopup = (infos, maxSpeedTree, index, baseIndex = 0) => {
+const findMaxEle = (infos, maxEleTree, index, baseIndex) => {
+  if (baseIndex === 0) return infos[index].maxEle;
+  if (index === baseIndex) return infos[index].ele;
+  if (baseIndex <= index) return getMaxEle(maxEleTree, baseIndex, index + 1);
+  return Math.max(getMaxEle(maxEleTree, 0, index + 1), getMaxEle(maxEleTree, baseIndex, infos.length));
+};
+const findMinEle = (infos, minEleTree, index, baseIndex) => {
+  if (baseIndex === 0) return infos[index].minEle;
+  if (index === baseIndex) return infos[index].ele;
+  if (baseIndex <= index) return getMinEle(minEleTree, baseIndex, index + 1);
+  return Math.max(getMinEle(minEleTree, 0, index + 1), getMinEle(minEleTree, baseIndex, infos.length));
+};
+
+const infoPopup = (infos, segTrees, index, baseIndex = 0) => {
   const isSpan = baseIndex <= index;
-  const info = infos[index], base = infos[baseIndex], last = infos[infos.length - 1];;
-  const {latlng, date, speed, ele} = info;
-  const maxSpeed = isSpan ? findMaxSpeed(infos, maxSpeedTree, index, baseIndex) :
-        Math.max(findMaxSpeed(infos, maxSpeedTree, 0, index), findMaxSpeed(infos, maxSpeedTree, baseIndex, infos.length - 1));
+  const info = infos[index], base = infos[baseIndex], last = infos[infos.length - 1];
+  const {latlng, date, speed, ele, angle} = info;
+  const maxSpeed = findMaxSpeed(infos, segTrees.maxSpeedTree, index, baseIndex);
+  const maxEle = findMaxEle(infos, segTrees.maxEleTree, index, baseIndex);
+  const minEle = findMinEle(infos, segTrees.minEleTree, index, baseIndex);
   const distance = isSpan ? info.distance - base.distance : info.distance + last.distance - base.distance;
   const time = isSpan ? info.time - base.time : info.time + last.time - base.time;
   const moving = isSpan ? info.moving - base.moving : info.moving + last.moving - base.moving;
@@ -305,24 +344,29 @@ const infoPopup = (infos, maxSpeedTree, index, baseIndex = 0) => {
   const movingTime = timeText(movingTotal);
   const totalAve = time === 0 ? 0 : distance / time * 1000;
   const movingAve = moving === 0 ? 0 : distance / moving * 1000;
+  const dir = direction(base.latlng, latlng);
   const labels = [
     `${ns}${degreeNf.format(lat).padStart(11)} ${ew}${degreeNf.format(lng).padStart(11)}\n`,
-    Number.isFinite(speed) ? `speed      : ${speedNf.format(speed * 3.6).padStart(9)}/h` : "",
-    Number.isFinite(ele) ?  `elevation  : ${eleNf.format(ele).padStart(8)}` : "",
-    Number.isFinite(distance) ? `distance   : ${distanceNf.format(distance / 1000).padStart(9)}` : "",
-    Number.isFinite(total.s) ? `total time : ${totalTime.padStart(9)}` : "",
-    Number.isFinite(movingTotal.s) ? `moving time: ${movingTime.padStart(9)}` : "",
-    Number.isFinite(totalAve) ? `total ave  : ${speedNf.format(totalAve * 3.6).padStart(9)}/h` : "",
-    Number.isFinite(movingAve) ? `moving ave : ${speedNf.format(movingAve * 3.6).padStart(9)}/h` : "",
-    Number.isFinite(maxSpeed) ? `max speed  : ${speedNf.format(maxSpeed * 3.6).padStart(9)}/h` : "",
-    Number.isFinite(elePlus) ?  `elevation+ : +${eleNf.format(elePlus).padStart(7)}` : "",
-    Number.isFinite(eleMinus) ?  `elevation- : -${eleNf.format(eleMinus).padStart(7)}` : "",
+    Number.isFinite(speed) ? `speed        : ${speedNf.format(speed * 3.6).padStart(9)}/h` : "",
+    Number.isFinite(ele) ? `elevation    : ${eleNf.format(ele).padStart(8)}` : "",
+    Number.isFinite(distance) ? `distance     : ${distanceNf.format(distance / 1000).padStart(9)}` : "",
+    Number.isFinite(total.s) ? `total time   : ${totalTime.padStart(9)}` : "",
+    Number.isFinite(movingTotal.s) ? `moving time  : ${movingTime.padStart(9)}` : "",
+    Number.isFinite(totalAve) ? `total ave    : ${speedNf.format(totalAve * 3.6).padStart(9)}/h` : "",
+    Number.isFinite(movingAve) ? `moving ave   : ${speedNf.format(movingAve * 3.6).padStart(9)}/h` : "",
+    Number.isFinite(maxSpeed) ? `max speed    : ${speedNf.format(maxSpeed * 3.6).padStart(9)}/h` : "",
+    Number.isFinite(minEle) ? `min elevation:  ${eleNf.format(minEle).padStart(7)}` : "",
+    Number.isFinite(maxEle) ? `max elevation:  ${eleNf.format(maxEle).padStart(7)}` : "",
+    Number.isFinite(elePlus) ? `elevation+   : +${eleNf.format(elePlus).padStart(7)}` : "",
+    Number.isFinite(eleMinus) ? `elevation-   : -${eleNf.format(eleMinus).padStart(7)}` : "",
+    `move toward  : ${Number.isFinite(angle) ? toClock(angle): "(stop)"}`,
+    `direction    : ${Number.isFinite(dir) ? toClock(dir) : "(same point)"}`,
     Number.isFinite(date.getTime()) ? `\n        ${date.toLocaleString()}` : "",
   ].filter(e => e).join("\n");
   return `<pre style='font-size: 12px; font-family: "Noto Mono", "Menlo", "Consolas", monospace !important;'>${labels}</pre>`;
 };
 
-const createGpxLayer = (infos, maxSpeedTree, {span = 60, size = 10, colors = ["cyan", "magenta"]} = {}) => {
+const createGpxLayer = (infos, segTrees, {span = 60, size = 10, colors = ["cyan", "magenta"]} = {}) => {
   // path
   const layer = L.featureGroup()
   const coords = infos.map(({latlng}) => latlng);
@@ -338,12 +382,12 @@ const createGpxLayer = (infos, maxSpeedTree, {span = 60, size = 10, colors = ["c
     mark.addTo(layer).
       on("mouseover", ev => ev.target.openPopup()).on("mouseout", ev => ev.target.closePopup()).
       on("mousedown", ev => ev.target.openPopup()).
-      bindPopup(infoPopup(infos, maxSpeedTree, i));
+      bindPopup(infoPopup(infos, segTrees, i));
   });
   return layer;
 };
 
-const createCursorHome = (infos, maxSpeedTree, {cursorText, homeText}) => {
+const createCursorHome = (infos, segTrees, {cursorText, homeText}) => {
   const cursor = L.marker(infos[0].latlng, {
     icon: L.divIcon({
       html: `<span style="font-size: 30px; vertical-slign: middle;">${cursorText}</span>`,
@@ -351,7 +395,7 @@ const createCursorHome = (infos, maxSpeedTree, {cursorText, homeText}) => {
       iconAnchor: [15, 30],
       popupAnchor: [0, -15],
     }),
-  }).bindPopup(infoPopup(infos, maxSpeedTree, 0));
+  }).bindPopup(infoPopup(infos, segTrees, 0));
   const home = L.marker(infos[0].latlng, {
     icon: L.divIcon({
       html: `<span style="font-size: 30px; vertical-slign: middle;">${homeText}</span>`,

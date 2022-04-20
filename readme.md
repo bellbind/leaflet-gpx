@@ -63,7 +63,7 @@ Decorations for steps
 - `this.setGpx(xml, dataset = this.dataset)` -> `this`: update GPX XML text
 - `this.getCursor()` -> `{cursor: <non-negative integer>, home: <non-negative integer>}`: get cursor & home position
 - `this.setCursor({cursor, home} = {})` -> `this`: set cursor & home position
-- `this.createGpxPath(xml, dataset = this.dataset)` -> `gpxPath = {layer, gpx, xml, infos, maxSpeedTree}`: cachable state of GPX Path layer
+- `this.createGpxPath(xml, dataset = this.dataset)` -> `gpxPath = {layer, xml, infos, ...}`: cachable state of GPX Path layer
 - `this.setGpxPath(gpxPath, dataset = this.dataset)` -> `this`: set GPX Path layer 
 
 - `this.map`: a `Map` object of Leaflet
