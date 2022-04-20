@@ -128,10 +128,11 @@ const LeafletGpx = class extends HTMLElement {
   createGpxPath(xml, dataset = this.dataset) {
     const gpx = new DOMParser().parseFromString(xml, "application/xml");
     const infos = gpxInfo(gpx);
+    const minSpeedTree = createMinSpeedTree(infos);
     const maxSpeedTree = createMaxSpeedTree(infos);
     const maxEleTree = createMaxEleTree(infos);
     const minEleTree = createMinEleTree(infos);
-    const segTrees = {maxSpeedTree, maxEleTree, minEleTree};
+    const segTrees = {minSpeedTree, maxSpeedTree, maxEleTree, minEleTree};
     
     const dataSpan = Math.trunc(dataset.infoSpan);
     const dataSize = Number(dataset.infoSize);
@@ -205,6 +206,7 @@ const gpxInfo = gpx => {
     info.time = info.date.getTime() - infos[0].date.getTime();
     info.moving = i === 0 ? 0 : infos[i - 1].moving + (info.speed > 0 ? info.date.getTime() - infos[i - 1].date.getTime() : 0);
     info.angle = i === 0 ? null : direction(infos[i - 1].latlng, info.latlng);
+    info.minSpeed = i === 0 ? info.speed : Math.min(infos[i - 1].minSpeed, info.speed);
     info.maxSpeed = i === 0 ? info.speed : Math.max(infos[i - 1].maxSpeed, info.speed);
     info.maxEle = i === 0 ? info.ele : Math.max(infos[i - 1].maxEle, info.ele);
     info.minEle = i === 0 ? info.ele : Math.min(infos[i - 1].minEle, info.ele);
@@ -249,6 +251,8 @@ const getSegValue = (tree, start, last, binOp, empty) => {
   if (last <= tree.start || tree.last <= start) return empty; // when tree is complete outside
   return binOp(getSegValue(tree.left, start, last, binOp, empty), getSegValue(tree.right, start, last, binOp, empty));
 };
+const createMinSpeedTree = (infos) => createSegTree(infos.map(({speed}) => speed), 0, infos.length, Math.min);
+const getMinSpeed = (tree, start, last) => getSegValue(tree, start, last, Math.min, Infinity);
 const createMaxSpeedTree = (infos) => createSegTree(infos.map(({speed}) => speed), 0, infos.length, Math.max);
 const getMaxSpeed = (tree, start, last) => getSegValue(tree, start, last, Math.max, 0);
 const createMaxEleTree = (infos) => createSegTree(infos.map(({ele}) => ele), 0, infos.length, Math.max);
@@ -304,6 +308,12 @@ const toClock = angle => {
 };
 
 // cursor => home ordering is as a hole of total loop
+const findMinSpeed = (infos, minSpeedTree, index, baseIndex) => {
+  if (baseIndex === 0) return infos[index].minSpeed;
+  if (index === baseIndex) return infos[index].speed;
+  if (baseIndex <= index) return getMinSpeed(minSpeedTree, baseIndex, index + 1);
+  return Math.min(getMinSpeed(minSpeedTree, 0, index + 1), getMinSpeed(minSpeedTree, baseIndex, infos.length));
+};
 const findMaxSpeed = (infos, maxSpeedTree, index, baseIndex) => {
   if (baseIndex === 0) return infos[index].maxSpeed;
   if (index === baseIndex) return infos[index].speed;
@@ -327,6 +337,7 @@ const infoPopup = (infos, segTrees, index, baseIndex = 0) => {
   const isSpan = baseIndex <= index;
   const info = infos[index], base = infos[baseIndex], last = infos[infos.length - 1];
   const {latlng, date, speed, ele, angle} = info;
+  const minSpeed = findMinSpeed(infos, segTrees.minSpeedTree, index, baseIndex);
   const maxSpeed = findMaxSpeed(infos, segTrees.maxSpeedTree, index, baseIndex);
   const maxEle = findMaxEle(infos, segTrees.maxEleTree, index, baseIndex);
   const minEle = findMinEle(infos, segTrees.minEleTree, index, baseIndex);
@@ -361,6 +372,7 @@ const infoPopup = (infos, segTrees, index, baseIndex = 0) => {
     Number.isFinite(elePlus) ? `elevation+     : +${eleNf.format(elePlus).padStart(7)}` : "",
     Number.isFinite(eleMinus) ? `elevation-     : -${eleNf.format(eleMinus).padStart(7)}` : "",
     "",
+    Number.isFinite(minSpeed) ? `min speed      : ${speedNf.format(minSpeed * 3.6).padStart(9)}/h` : "",
     Number.isFinite(maxSpeed) ? `max speed      : ${speedNf.format(maxSpeed * 3.6).padStart(9)}/h` : "",
     Number.isFinite(minEle) ? `min elevation  :  ${eleNf.format(minEle).padStart(7)}` : "",
     Number.isFinite(maxEle) ? `max elevation  :  ${eleNf.format(maxEle).padStart(7)}` : "",
