@@ -204,7 +204,6 @@ const gpxInfo = gpx => {
     info.speed ??= i === 0 ? 0 : 1000 * info.latlng.distanceTo(infos[i - 1].latlng) / (info.date.getTime() - infos[i - 1].date.getTime());
     info.time = info.date.getTime() - infos[0].date.getTime();
     info.moving = i === 0 ? 0 : infos[i - 1].moving + (info.speed > 0 ? info.date.getTime() - infos[i - 1].date.getTime() : 0);
-    //info.angle = i === 0 ? null : direction(info.latlng, infos[i - 1].latlng);
     info.angle = i === 0 ? null : direction(infos[i - 1].latlng, info.latlng);
     info.maxSpeed = i === 0 ? info.speed : Math.max(infos[i - 1].maxSpeed, info.speed);
     info.maxEle = i === 0 ? info.ele : Math.max(infos[i - 1].maxEle, info.ele);
@@ -344,25 +343,33 @@ const infoPopup = (infos, segTrees, index, baseIndex = 0) => {
   const movingTime = timeText(movingTotal);
   const totalAve = time === 0 ? 0 : distance / time * 1000;
   const movingAve = moving === 0 ? 0 : distance / moving * 1000;
+  
   const dir = direction(base.latlng, latlng);
+  const straight = base.latlng.distanceTo(latlng);
   const labels = [
-    `${ns}${degreeNf.format(lat).padStart(11)} ${ew}${degreeNf.format(lng).padStart(11)}\n`,
-    Number.isFinite(speed) ? `speed        : ${speedNf.format(speed * 3.6).padStart(9)}/h` : "",
-    Number.isFinite(ele) ? `elevation    : ${eleNf.format(ele).padStart(8)}` : "",
-    Number.isFinite(distance) ? `distance     : ${distanceNf.format(distance / 1000).padStart(9)}` : "",
-    Number.isFinite(total.s) ? `total time   : ${totalTime.padStart(9)}` : "",
-    Number.isFinite(movingTotal.s) ? `moving time  : ${movingTime.padStart(9)}` : "",
-    Number.isFinite(totalAve) ? `total ave    : ${speedNf.format(totalAve * 3.6).padStart(9)}/h` : "",
-    Number.isFinite(movingAve) ? `moving ave   : ${speedNf.format(movingAve * 3.6).padStart(9)}/h` : "",
-    Number.isFinite(maxSpeed) ? `max speed    : ${speedNf.format(maxSpeed * 3.6).padStart(9)}/h` : "",
-    Number.isFinite(minEle) ? `min elevation:  ${eleNf.format(minEle).padStart(7)}` : "",
-    Number.isFinite(maxEle) ? `max elevation:  ${eleNf.format(maxEle).padStart(7)}` : "",
-    Number.isFinite(elePlus) ? `elevation+   : +${eleNf.format(elePlus).padStart(7)}` : "",
-    Number.isFinite(eleMinus) ? `elevation-   : -${eleNf.format(eleMinus).padStart(7)}` : "",
-    `move toward  : ${Number.isFinite(angle) ? toClock(angle): "(stop)"}`,
-    `direction    : ${Number.isFinite(dir) ? toClock(dir) : "(same point)"}`,
-    Number.isFinite(date.getTime()) ? `\n        ${date.toLocaleString()}` : "",
-  ].filter(e => e).join("\n");
+    `${ns}${degreeNf.format(lat).padStart(11)} ${ew}${degreeNf.format(lng).padStart(11)}`,
+    "",
+    `move toward    : ${Number.isFinite(angle) ? toClock(angle): "(stop)"}`,
+    Number.isFinite(speed) ? `speed          : ${speedNf.format(speed * 3.6).padStart(9)}/h` : "",
+    Number.isFinite(ele) ? `elevation      : ${eleNf.format(ele).padStart(8)}` : "",
+    "",
+    Number.isFinite(distance) ? `moving distance: ${distanceNf.format(distance / 1000).padStart(9)}` : "",
+    Number.isFinite(total.s) ? `total time     : ${totalTime.padStart(9)}` : "",
+    Number.isFinite(movingTotal.s) ? `moving time    : ${movingTime.padStart(9)}` : "",
+    Number.isFinite(totalAve) ? `total ave      : ${speedNf.format(totalAve * 3.6).padStart(9)}/h` : "",
+    Number.isFinite(movingAve) ? `moving ave     : ${speedNf.format(movingAve * 3.6).padStart(9)}/h` : "",
+    Number.isFinite(elePlus) ? `elevation+     : +${eleNf.format(elePlus).padStart(7)}` : "",
+    Number.isFinite(eleMinus) ? `elevation-     : -${eleNf.format(eleMinus).padStart(7)}` : "",
+    "",
+    Number.isFinite(maxSpeed) ? `max speed      : ${speedNf.format(maxSpeed * 3.6).padStart(9)}/h` : "",
+    Number.isFinite(minEle) ? `min elevation  :  ${eleNf.format(minEle).padStart(7)}` : "",
+    Number.isFinite(maxEle) ? `max elevation  :  ${eleNf.format(maxEle).padStart(7)}` : "",
+    "",
+    `bearing        : ${Number.isFinite(dir) ? toClock(dir) : "(same point)"}`,
+    `direct length  : ${distanceNf.format(straight / 1000).padStart(9)}`,    
+    "",
+    Number.isFinite(date.getTime()) ? `        ${date.toLocaleString()}` : "",
+  ].join("\n");
   return `<pre style='font-size: 12px; font-family: "Noto Mono", "Menlo", "Consolas", monospace !important;'>${labels}</pre>`;
 };
 
