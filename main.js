@@ -29,7 +29,10 @@ const load = async (file) => {
     keepLayers(layer);
     return;
   }
-  return fetch(file).then(res => res.text()).then(xml => {
+  return fetch(file).then(res => {
+    if (res.ok) return res.text();
+    throw res;
+  }).then(xml => {
     const layer = viewer.layer;
     const gpxPath = viewer.createGpxPath(xml);
     viewer.setGpxPath(gpxPath);
