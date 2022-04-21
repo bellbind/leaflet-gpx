@@ -1,13 +1,58 @@
 import * as L from "https://unpkg.com/leaflet@1.8.0/dist/leaflet-src.esm.js";
+const leafletCssUrl = "https://unpkg.com/leaflet@1.8.0/dist/leaflet.css";
+
+const rootCss = `
+.container {
+  display: flex;
+  flex-direction: column;
+}
+.map {
+  flex: 9;
+}
+.control {
+  flex: 1;
+  min-height: 10%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.graph {
+  position: absolute;
+  height: 5%;
+  width: 90%;
+  z-index: -1;
+}
+.slider {
+  flex: 1;
+  width: 90%;
+  margin-left: 5%;
+  margin-right: 5%;
+  background-color: rgba(0, 0, 0, 0);
+}
+.home {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.info-popup {
+  font-size: 16px; 
+  font-family: "Noto Mono", "Menlo", "Consolas", monospace !important;
+}
+.download {
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 10px;
+}
+`;
 
 const LeafletGpx = class extends HTMLElement {
   constructor() {
     super();
     const shadow = this.attachShadow({mode: "open"});
+    const rootStyle = this.ownerDocument.createElement("style");
+    rootStyle.textContent = rootCss;
 
     const container = this.ownerDocument.createElement("div");
-    container.style.display = "flex";
-    container.style.flexDirection = "column";
+    container.classList.add("container");
     
     // size adjustment
     const style = window.getComputedStyle(this);
@@ -16,72 +61,46 @@ const LeafletGpx = class extends HTMLElement {
       [container.style.width, container.style.height] = [style.width, style.height];
     });
     const mapDiv = this.ownerDocument.createElement("div");
+    mapDiv.classList.add("map");
     //const mapStyle = window.getComputedStyle(mapDiv);
     new ResizeObserver(() => {
       this.map.invalidateSize(true);
     }).observe(mapDiv);
-    mapDiv.style.flex = "9";
+    //leaflet css
+    const cssLink = this.ownerDocument.createElement("link");
+    [cssLink.rel, cssLink.href] = ["stylesheet", leafletCssUrl];
+    mapDiv.append(cssLink);
 
-    const control = this.ownerDocument.createElement("div");
-    mapDiv.style.flex = "1";
-    control.style.minHeight = "10%";
-    control.style.display = "flex";
-    control.style.alignItems = "center";
-    control.style.justifyContent = "center";
-    control.style.flexDirection = "column";
+    const graph = this.graph = this.ownerDocument.createElement("canvas");
+    graph.classList.add("graph");
+    new ResizeObserver(entries => updateGraphs(this)).observe(graph);
 
-    const graph = this.graph = document.createElement("canvas");
-    graph.style.position = "absolute";
-    graph.style.height = "5%";
-    graph.style.width = "90%";
-    graph.style.zIndex = "-1";
-    bindGraph(this);
-    control.append(graph);
-    
     const slider = this.slider = this.ownerDocument.createElement("input");
-    slider.style.flex = "1";
-    slider.style.width = "90%";
-    
-    slider.style.marginLeft = slider.style.marginRight = "5%";
-    slider.style.backgroundColor = "rgba(0, 0, 0, 0)";
-    
+    slider.classList.add("slider");
     slider.type = "range";
     slider.value = slider.min = slider.max = 0;
-    control.append(slider);
     slider.addEventListener("input", ev => {
       if (!this.cursor) return;
-      const info = this.infos[slider.value | 0];
-      this.cursor.setLatLng(info.latlng);
-      this.cursor.setPopupContent(infoPopup(this.infos, this.segTrees, slider.value | 0, homeSlider.value | 0));
-      this.map.setView(info.latlng, this.map.getZoom());
-      this.cursor.openPopup();
-      drawGraphs(this);
-      this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
+      this.cursor.setLatLng(this.infos[slider.value | 0].latlng);
+      updateCursorInfo(this);
     });
-
-    // home
-    const homeSlider = this.homeSlider = this.ownerDocument.createElement("input");
-    homeSlider.style.flex = "1";
-    homeSlider.style.width = "90%";
-    homeSlider.style.webkitAppearance = "none"; 
-    homeSlider.style.backgroundColor = "rgba(0, 0, 0, 0)";
     
-    homeSlider.style.marginLeft = homeSlider.style.marginRight = "5%";
+    const homeSlider = this.homeSlider = this.ownerDocument.createElement("input");
+    homeSlider.classList.add("slider", "home");
     homeSlider.type = "range";
     homeSlider.value = homeSlider.min = homeSlider.max = 0;
-    control.append(homeSlider);
     homeSlider.addEventListener("input", ev => {
       if (!this.home) return;
-      const info = this.infos[homeSlider.value | 0];
-      this.home.setLatLng(info.latlng);
-      this.cursor.setPopupContent(infoPopup(this.infos, this.segTrees, slider.value | 0, homeSlider.value | 0));
-      drawGraphs(this);
-      this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
+      this.home.setLatLng(this.infos[homeSlider.value | 0].latlng);
+      updateCursorInfo(this);
     });
-    
-    // slider keybind
+
+    // bottom control area
+    const control = this.ownerDocument.createElement("div");
+    control.classList.add("control");
     control.tabIndex = 0;
     control.addEventListener("keydown", ev => {
+      // slider keybind
       if (!this.cursor) return;
       if (ev.code === "ArrowDown") {
         this.homeSlider.value = this.slider.value;
@@ -95,22 +114,15 @@ const LeafletGpx = class extends HTMLElement {
         this.slider.value = Number(this.slider.value) + amount;
       }
       ev.preventDefault();
-      const info = this.infos[this.slider.value | 0];
-      this.cursor.setLatLng(info.latlng);
-      this.cursor.setPopupContent(infoPopup(this.infos, this.segTrees, slider.value | 0, homeSlider.value | 0));
-      this.map.setView(info.latlng, this.map.getZoom());
-      this.cursor.openPopup();
-      drawGraphs(this);
-      this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
+      this.cursor.setLatLng(this.infos[this.slider.value | 0].latlng);
+      updateCursorInfo(this);
     });
-    
-    //leaflet css
-    const cssLink = this.ownerDocument.createElement("link");
-    [cssLink.rel, cssLink.href] = ["stylesheet", "https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"];
-    mapDiv.append(cssLink);
-    container.append(mapDiv);
-    container.append(control);
-    shadow.append(container);
+
+    control.append(graph, slider, homeSlider);
+    container.append(mapDiv, control);
+    shadow.append(rootStyle, container);
+
+    // bind leaflet map
     const map = this.map = L.map(mapDiv).setView([0, 0], 0);
     //this.map.locate({setView: true, maxZoom: 16});
   }
@@ -136,7 +148,7 @@ const LeafletGpx = class extends HTMLElement {
     this.layer = this.cursor = this.control = this.home = null;
     this.slider.value = this.homeSlider.value = this.slider.max = this.homeSlider.max = 0;
     this.infos = this.segTrees = null;
-    drawGraphs(this);
+    updateGraphs(this);
     return this;
   }
   setGpx(xml, dataset = this.dataset) {
@@ -151,7 +163,6 @@ const LeafletGpx = class extends HTMLElement {
     const maxEleTree = createMaxEleTree(infos);
     const minEleTree = createMinEleTree(infos);
     const segTrees = {minSpeedTree, maxSpeedTree, maxEleTree, minEleTree};
-    
     const dataSpan = Math.trunc(dataset.infoSpan);
     const dataSize = Number(dataset.infoSize);
     const dataColors = dataset.infoColors?.split(",")?.map(c => c.trim()) ?? [];
@@ -168,14 +179,14 @@ const LeafletGpx = class extends HTMLElement {
     this.slider.max = this.homeSlider.max = this.infos.length - 1;
     this.layer.addTo(this.map);
     this.map.fitBounds(this.layer.getBounds());
-    drawGraphs(this);
+    updateGraphs(this);
 
     const cursorText = dataset.cursorText ?? "&#x1f3c3;";
     const homeText = dataset.homeText ?? "&#x1f3e0;";
     const {cursor, home} = createCursorHome(infos, segTrees, {cursorText, homeText});
     this.cursor = cursor.addTo(this.map);
     this.home = home.addTo(this.map);
-    this.control = createDownloadLink(gpx, xml).addTo(this.map);
+    this.control = createDownloadLink(this, gpx, xml).addTo(this.map);
     return this;
   }
   
@@ -184,21 +195,31 @@ const LeafletGpx = class extends HTMLElement {
   }
   setCursor({cursor, home} = {}) {
     if (!this.cursor) return;
-    if (cursor !== undefined) this.slider.value = Math.min(Math.max(0, Number(cursor)), Number(this.slider.max));;
-    if (home !== undefined) this.homeSlider.value = Math.min(Math.max(0, Number(home)), Number(this.homeSlider.max));
-    const info = this.infos[this.slider.value | 0];
-    this.home.setLatLng(this.infos[this.homeSlider.value | 0].latlng);
-    this.cursor.setLatLng(info.latlng);
-    this.cursor.setPopupContent(infoPopup(this.infos, this.segTrees, this.slider.value | 0, this.homeSlider.value | 0));
-    this.map.setView(info.latlng, this.map.getZoom());
-    this.cursor.openPopup();
-    drawGraphs(this);
-    this.dispatchEvent(new CustomEvent("cursor-changed", {detail: this.getCursor()}));
+    if (home !== undefined) {
+      const value = Math.min(Math.max(0, Number(home)), Number(this.homeSlider.max));
+      this.homeSlider.value = value
+      this.home.setLatLng(this.infos[value].latlng);
+    }
+    if (cursor !== undefined) {
+      const value = Math.min(Math.max(0, Number(cursor)), Number(this.slider.max));
+      this.slider.value = value;
+      this.cursor.setLatLng(this.infos[value].latlng);      
+    }
+    updateCursorInfo(this);
     return this;
   }
 };
 
+const updateCursorInfo = self => {
+  self.cursor.setPopupContent(infoPopup(self.infos, self.segTrees, self.slider.value | 0, self.homeSlider.value | 0));
+  self.map.setView(self.cursor.getLatLng(), self.map.getZoom());
+  self.cursor.openPopup();
+  updateGraphs(self);
+  self.dispatchEvent(new CustomEvent("cursor-changed", {detail: self.getCursor()}));
+};
 
+
+// gpx xml resolvers
 const loadGpxFromUrl = async url => {
   const res = await fetch(url);
   return await res.text();
@@ -260,6 +281,7 @@ const destination = ({lat, lng}, angle, distance) => {
 // binary tree of the max value for maxSpeed search
 const createSegTree = (values, start, last, binOp, uniOp = v => v) => {
   const length = last - start;
+  if (length === 0) return {start, last};
   if (length === 1) return {v: uniOp(values[start]), start, last};
   const mid = start + (length >> 1);
   const left = createSegTree(values, start, mid, binOp, uniOp);
@@ -280,6 +302,7 @@ const getMaxEle = (tree, start, last) => getSegValue(tree, start, last, Math.max
 const createMinEleTree = (infos) => createSegTree(infos.map(({ele}) => ele), 0, infos.length, Math.min);
 const getMinEle = (tree, start, last) => getSegValue(tree, start, last, Math.min, Infinity);
 
+// text formatters
 const msecToTime = msec => {
   const ms = msec % 1000;
   const sec = (msec - ms) / 1000;
@@ -292,16 +315,6 @@ const msecToTime = msec => {
 const timeText = ({h, m, s, ms}) => {
   return `${h.toString().padStart(2)}h${m.toString().padStart(2, "0")}m${s.toString().padStart(2, "0")}s`;  
 };
-
-const infoMark = (latlng, angle, color, size) => {
-  if (angle === null) return L.circle(latlng, {color, radius: size});
-  const leftAngle = angle + Math.PI - Math.PI / 9;
-  const rightAngle = angle + Math.PI + Math.PI / 9;
-  const left = destination(latlng, leftAngle, size * 2);
-  const right = destination(latlng, rightAngle, size * 2);
-  return L.polygon([left, latlng, right], {color}); // as arrow head
-};
-
 const degreeNf = new Intl.NumberFormat(undefined, {
   unit: "degree", style: "unit", unitDisplay: "narrow",
   maximumFractionDigits: 6, minimumFractionDigits: 6});
@@ -317,7 +330,6 @@ const distanceNf = new Intl.NumberFormat(undefined, {
 const angleNf = new Intl.NumberFormat(undefined, {
   unit: "degree", style: "unit", unitDisplay: "narrow",
   maximumFractionDigits: 0});
-  
 const toClock = angle => {
   const degree = angle / Math.PI * 180;
   const minutes = ((angle / Math.PI + 2) % 2) * 6 * 60;
@@ -353,6 +365,7 @@ const findMinEle = (infos, minEleTree, index, baseIndex) => {
   return Math.max(getMinEle(minEleTree, 0, index + 1), getMinEle(minEleTree, baseIndex, infos.length));
 };
 
+// Leaflet UI
 const infoPopup = (infos, segTrees, index, baseIndex = 0) => {
   const isSpan = baseIndex <= index;
   const info = infos[index], base = infos[baseIndex], last = infos[infos.length - 1];
@@ -402,9 +415,16 @@ const infoPopup = (infos, segTrees, index, baseIndex = 0) => {
     "",
     Number.isFinite(date.getTime()) ? `        ${date.toLocaleString()}` : "",
   ].join("\n");
-  return `<pre style='font-size: 12px; font-family: "Noto Mono", "Menlo", "Consolas", monospace !important;'>${labels}</pre>`;
+  return `<pre class="info-popup">${labels}</pre>`;
 };
-
+const infoMark = (latlng, angle, color, size) => {
+  if (angle === null) return L.circle(latlng, {color, radius: size});
+  const leftAngle = angle + Math.PI - Math.PI / 9;
+  const rightAngle = angle + Math.PI + Math.PI / 9;
+  const left = destination(latlng, leftAngle, size * 2);
+  const right = destination(latlng, rightAngle, size * 2);
+  return L.polygon([left, latlng, right], {color}); // as arrow head
+};
 const createGpxLayer = (infos, segTrees, {span = 60, size = 10, colors = ["cyan", "magenta"]} = {}) => {
   // path
   const layer = L.featureGroup()
@@ -427,36 +447,29 @@ const createGpxLayer = (infos, segTrees, {span = 60, size = 10, colors = ["cyan"
 };
 
 const createCursorHome = (infos, segTrees, {cursorText, homeText}) => {
+  const cursorSize = 30;
+  const iconSize = [0, 0], iconAnchor = [cursorSize / 2, cursorSize], popupAnchor = [0, -cursorSize / 2];
+  const style = `font-size: ${cursorSize}px; vertical-slign: middle;`;
   const cursor = L.marker(infos[0].latlng, {
-    icon: L.divIcon({
-      html: `<span style="font-size: 30px; vertical-slign: middle;">${cursorText}</span>`,
-      iconSize: [0, 0],
-      iconAnchor: [15, 30],
-      popupAnchor: [0, -15],
-    }),
+    icon: L.divIcon({html: `<span style="${style}">${cursorText}</span>`, iconSize, iconAnchor, popupAnchor}),
   }).bindPopup(infoPopup(infos, segTrees, 0));
   const home = L.marker(infos[0].latlng, {
-    icon: L.divIcon({
-      html: `<span style="font-size: 30px; vertical-slign: middle;">${homeText}</span>`,
-      iconSize: [0, 0],
-      iconAnchor: [15, 30],
-      popupAnchor: [0, -15],
-    }),
+    icon: L.divIcon({html: `<span style="${style}">${homeText}</span>`, iconSize, iconAnchor, popupAnchor}),
     zIndexOffset: -1000,
   });
   return {cursor, home};
 };
 
-const createDownloadLink = (gpx, xml) => {
+const createDownloadLink = (elem, gpx, xml) => {
   const name = gpx.querySelector("name")?.textContent?.replaceAll(/[ :]/g, "_") ?? "untitled";
   const fileName = `${name}.gpx`;
   const dataUrl = `data:application/xml,${encodeURIComponent(xml)}`;
-  const download = document.createElement("a");
+  const download = elem.ownerDocument.createElement("a");
+  download.classList.add("download");
   download.download = fileName;
   download.href = dataUrl;
   download.textContent = "Download GPX file";
-  download.style.backgroundColor = "rgba(255, 255, 255, 0.7)";
-  download.style.padding = "1vmin";
+
   const DownloadControl = L.Control.extend({
     onAdd(map) {
       return download;
@@ -465,15 +478,15 @@ const createDownloadLink = (gpx, xml) => {
   return new DownloadControl();
 };
 
-
-const drawGraphs = self => {
+// Graph
+const updateGraphs = self => {
   const {graph, infos} = self;
   const c2d = graph.getContext("2d");
   c2d.save();
   c2d.scale(graph.width, graph.height);
   c2d.clearRect(0, 0, 1, 1);
   if (infos) {
-    c2d.fillStyle = "rgba(0, 0, 0, 0.25)";
+    c2d.fillStyle = "hsla(240, 75%, 50%, 0.25)";
     const cursor = self.slider.value / (infos.length - 1), home = self.homeSlider.value / (infos.length - 1);
     if (home <= cursor) {
       c2d.fillRect(home, 0, cursor - home, 1);
@@ -485,11 +498,6 @@ const drawGraphs = self => {
     drawGraph(c2d, infos.map(({ele}) => ele));
   }
   c2d.restore();
-};
-const bindGraph = self => {
-  new ResizeObserver(entries => {
-    drawGraphs(self);
-  }).observe(self.graph);
 };
 const drawGraph = (c2d, values) => {
   let max = -Infinity, min = Infinity;
