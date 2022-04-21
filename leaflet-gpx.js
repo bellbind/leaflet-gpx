@@ -222,6 +222,7 @@ const updateCursorInfo = self => {
 // gpx xml resolvers
 const loadGpxFromUrl = async url => {
   const res = await fetch(url);
+  if (!res.ok) throw res;
   return await res.text();
 };
 const loadGpxFromCid = async cid => {
