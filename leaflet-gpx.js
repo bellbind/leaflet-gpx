@@ -173,6 +173,7 @@ const LeafletGpx = class extends HTMLElement {
   }
   setGpxPath({layer, gpx, xml, infos, maxSpeedTree, segTrees}, dataset = this.dataset) {
     this.clearGpx();
+    if (infos.length === 0) return this;
     [this.layer, this.infos, this.segTrees] = [layer, infos, segTrees]; 
     this.slider.value = this.homeSlider.value = 0;
     this.slider.max = this.homeSlider.max = this.infos.length - 1;
