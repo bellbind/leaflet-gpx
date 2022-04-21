@@ -58,14 +58,13 @@ const LeafletGpx = class extends HTMLElement {
     const style = window.getComputedStyle(this);
     [container.style.width, container.style.height] = [style.width, style.height];
     window.addEventListener("resize", ev => {
+      // [NOTE] for resize fine when window shrinked, do removeProperty("height") 
+      container.style.removeProperty("width");
+      container.style.removeProperty("height");
       [container.style.width, container.style.height] = [style.width, style.height];
     });
     const mapDiv = this.ownerDocument.createElement("div");
     mapDiv.classList.add("map");
-    //const mapStyle = window.getComputedStyle(mapDiv);
-    new ResizeObserver(() => {
-      this.map.invalidateSize(true);
-    }).observe(mapDiv);
     //leaflet css
     const cssLink = this.ownerDocument.createElement("link");
     [cssLink.rel, cssLink.href] = ["stylesheet", leafletCssUrl];
