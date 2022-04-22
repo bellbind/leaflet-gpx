@@ -10,6 +10,7 @@ const rootCss = `
   flex: 9;
 }
 .control {
+  position: relative;
   flex: 1;
   min-height: 10%;
   display: flex;
@@ -19,7 +20,7 @@ const rootCss = `
 }
 .graph {
   position: absolute;
-  height: 5%;
+  height: 50%;
   width: calc(90% - 1em);
   z-index: -1;
 }
