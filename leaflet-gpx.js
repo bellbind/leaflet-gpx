@@ -49,7 +49,7 @@ const LeafletGpx = class extends HTMLElement {
   constructor() {
     super();
     const shadow = this.attachShadow({mode: "open"});
-    const rootStyle = this.ownerDocument.createElement("style");
+    const rootStyle = this.rootStyle = this.ownerDocument.createElement("style");
     rootStyle.textContent = rootCss;
 
     const container = this.ownerDocument.createElement("div");
@@ -132,6 +132,9 @@ const LeafletGpx = class extends HTMLElement {
       const attribution = this.dataset.attribution ?? `&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors`;
       this.tile = L.tileLayer(tileTemplate, {attribution}).addTo(this.map);
     }
+    if (this.dataset.popupFontSize) {
+      this.rootStyle.textContent += `.info-popup {font-size: ${this.dataset.popupFontSize}`;
+    }
     if (this.layer) return;
     if (this.dataset.src) {
       loadGpxFromUrl(this.dataset.src).then(xml => this.setGpx(xml, this.dataset)).catch(console.error);
@@ -184,10 +187,12 @@ const LeafletGpx = class extends HTMLElement {
 
     const cursorText = dataset.cursorText ?? "&#x1f3c3;";
     const homeText = dataset.homeText ?? "&#x1f3e0;";
-    const {cursor, home} = createCursorHome(infos, segTrees, {cursorText, homeText});
+    const cursorSize = Number(dataset.cursorSize) ?? 30;
+    const {cursor, home} = createCursorHome(infos, segTrees, {cursorText, homeText, cursorSize});
     this.cursor = cursor.addTo(this.map);
     this.home = home.addTo(this.map);
-    this.control = createDownloadLink(this, gpx, xml).addTo(this.map);
+    this.control = createDownloadLink(this, gpx, xml);
+    if (!dataset.hideDownload) this.control.addTo(this.map);
     return this;
   }
   
@@ -448,8 +453,7 @@ const createGpxLayer = (infos, segTrees, {span = 60, size = 10, colors = ["cyan"
   return layer;
 };
 
-const createCursorHome = (infos, segTrees, {cursorText, homeText}) => {
-  const cursorSize = 30;
+const createCursorHome = (infos, segTrees, {cursorText, homeText, cursorSize = 30}) => {
   const iconSize = [0, 0], iconAnchor = [cursorSize / 2, cursorSize], popupAnchor = [0, -cursorSize / 2];
   const style = `font-size: ${cursorSize}px; vertical-slign: middle;`;
   const cursor = L.marker(infos[0].latlng, {

@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Inline map example</title>
+    <script type="module" src="../leaflet-gpx.js"></script>
+    <style>html, body {height: 100%;}</style>
+  </head>
+  <body>
+    <div>
+      This is a cycling course around East Tokyo
+    <leaflet-gpx
+      style="display: inline-block; vertical-align: middle; height: 35vw; width: 35vh;"
+      data-src="./east-tokyo.gpx"
+      data-popup-font-size="10px !important"
+      data-cursor-size="14"
+      data-hide-download="true"
+      ></leaflet-gpx> (clockwise).
+    </div>
+  </body>
+</html>
