@@ -20,7 +20,7 @@ const rootCss = `
 .graph {
   position: absolute;
   height: 5%;
-  width: 90%;
+  width: calc(90% - 1em);
   z-index: -1;
 }
 .slider {
