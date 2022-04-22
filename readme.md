@@ -41,6 +41,7 @@ Decorations for steps
 - [customized-url.html](https://bellbind.github.io/leaflet-gpx-element/examples/customized-url.html): `<leaflet-gpx>` with customzing attributes
 - [file.html](https://bellbind.github.io/leaflet-gpx-element/examples/file.html): Displaying a local GPX file with `setGpx(xml)` method
 - [dnd.html](https://bellbind.github.io/leaflet-gpx-element/examples/dnd.html): Displaying a Drag & Drop-ed GPX file with `setGpx(xml)` method
+- [inline.html](https://bellbind.github.io/leaflet-gpx-element/examples/inline.html): use `<leaflet-gpx>` as `inline-block`.
 
 ## `<leaflet-gpx>` attributes
 
@@ -48,8 +49,11 @@ Decorations for steps
 - `data-info-span`: marker span of `trkpt`s (default: `"60"`) 
 - `data-info-size`: base meter size of marker (defalut: `"10"`)
 - `data-info-colors`: comma separated color names (default: `"cyan,magenta"`)
+- `data-cursor-size`: pixel size of cursor/home icons (default: `"30"`)
 - `data-cursor-text`: cursor icon text (default: `"&#x1f3c3;"` as "Runner" emoji)
 - `data-home-text`: cursor icon text (default: `"&#x1f3e0;"` as "House" emoji)
+- `data-popup-font-size`: CSS font-size of info popup text (default: `"16px"`)
+- `data-hide-download`: hide "Download GPX file" panel when "true" (default: "")
 - `data-tile-template`: tile template url (default: `"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"`)
 - `data-attribution`: Leaflet attribution panel (default: `"&copy; &lt;a href="https://www.openstreetmap.org/copyright"&gt;OpenStreetMap&lt;/a&gt; contributors"`)
 
