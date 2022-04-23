@@ -187,7 +187,7 @@ const LeafletGpx = class extends HTMLElement {
 
     const cursorText = dataset.cursorText ?? "&#x1f3c3;";
     const homeText = dataset.homeText ?? "&#x1f3e0;";
-    const cursorSize = Number(dataset.cursorSize) ?? 30;
+    const cursorSize = dataset.cursorSize && Number.isFinite(+dataset.cursorSize) && +dataset.cursorSize > 0 ? +dataset.cursorSize : 30;
     const {cursor, home} = createCursorHome(infos, segTrees, {cursorText, homeText, cursorSize});
     this.cursor = cursor.addTo(this.map);
     this.home = home.addTo(this.map);
