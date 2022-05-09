@@ -172,7 +172,7 @@ const LeafletGpx = class extends HTMLElement {
     const span = dataSpan > 0 ? dataSpan : 60;
     const size = dataSpan > 0 ? dataSize : 10;
     const colors = dataColors.length > 0 ? dataColors : ["cyan", "magenta"];
-    const layer = createGpxLayer(infos, maxSpeedTree, {span, size, colors});
+    const layer = createGpxLayer(infos, segTrees, {span, size, colors});
     return {layer, gpx, xml, infos, segTrees};
   }
   setGpxPath({layer, gpx, xml, infos, maxSpeedTree, segTrees}, dataset = this.dataset) {
@@ -394,14 +394,16 @@ const infoPopup = (infos, segTrees, index, baseIndex = 0) => {
   const movingTime = timeText(movingTotal);
   const totalAve = time === 0 ? 0 : distance / time * 1000;
   const movingAve = moving === 0 ? 0 : distance / moving * 1000;
-  
+
+  const speedRate = !Number.isFinite(speed) || segTrees.maxSpeedTree.v === 0 ? 0 : speed / segTrees.maxSpeedTree.v;
+  const speedBar = `<span style="position: absolute; height: 100%; background-color: hsla(${60 + 240 * speedRate}, 75%, 50%, 0.5); font-size: inherit; width: ${speedRate * 10}em;"></span>`;
   const dir = direction(base.latlng, latlng);
   const straight = base.latlng.distanceTo(latlng);
   const labels = [
     `${ns}${degreeNf.format(lat).padStart(11)} ${ew}${degreeNf.format(lng).padStart(11)}`,
     "",
     `move toward    : ${Number.isFinite(angle) ? toClock(angle): "(stop)"}`,
-    Number.isFinite(speed) ? `speed          : ${speedNf.format(speed * 3.6).padStart(9)}/h` : "",
+    Number.isFinite(speed) ? `speed          : <span style="position: relative;">${speedBar}<span style="position: absolute;">${speedNf.format(speed * 3.6).padStart(9)}/h</span></span>` : "",
     Number.isFinite(ele) ? `elevation      : ${eleNf.format(ele).padStart(8)}` : "",
     "",
     Number.isFinite(distance) ? `moving distance: ${distanceNf.format(distance / 1000).padStart(9)}` : "",
