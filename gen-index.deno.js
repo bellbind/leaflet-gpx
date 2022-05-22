@@ -1,3 +1,4 @@
+#!/usr/bin/env -S deno run --allow-read 
 // deno run --allow-read gen-index.deno.js
 const data = [];
 for await (const entry of Deno.readDir("gpx")) {
