@@ -428,11 +428,21 @@ const infoPopup = (infos, segTrees, index, baseIndex = 0) => {
 };
 const infoMark = (latlng, angle, color, size) => {
   if (angle === null) return L.circle(latlng, {color, radius: size});
-  const leftAngle = angle + Math.PI - Math.PI / 9;
-  const rightAngle = angle + Math.PI + Math.PI / 9;
-  const left = destination(latlng, leftAngle, size * 2);
-  const right = destination(latlng, rightAngle, size * 2);
-  return L.polygon([left, latlng, right], {color}); // as arrow head
+  const leftAngle = angle + Math.PI - Math.PI / 4;
+  const rightAngle = angle + Math.PI + Math.PI / 4;
+  const left = destination(latlng, leftAngle, size);
+  const right = destination(latlng, rightAngle, size);
+  const top = destination(latlng, angle, size);
+  return L.polygon([left, latlng, right, top], {color}); // as arrow head
+};
+const infoMarkArrow = (latlng, angle, color, size) => {
+  const iconSize = [0, 0], iconAnchor = [size / 2, size * 0.8], popupAnchor = [0, -size / 2];
+  const cursorText = "&#x27a4;";
+  const deg = angle * 180 / Math.PI - 90;
+  const style = `display: inline-block; font-weight: bold; font-size: ${size}px; color: ${color}; transform: rotate3d(0, 0, 1, ${deg}deg);`;
+  return L.marker(latlng, {
+    icon: L.divIcon({html: `<span style="${style}">${cursorText}</span>`, iconSize, iconAnchor, popupAnchor}),
+  });
 };
 const createGpxLayer = (infos, segTrees, {span = 60, size = 10, colors = ["cyan", "magenta"]} = {}) => {
   // path
@@ -446,7 +456,8 @@ const createGpxLayer = (infos, segTrees, {span = 60, size = 10, colors = ["cyan"
   infos.forEach((info, i) => {
     if (i % span !== 0 && i !== infos.length - 1) return;
     const color = colors[Math.trunc(i * colorFactor)];
-    const mark = infoMark(info.latlng, info.angle, color, size);
+    //const mark = infoMark(info.latlng, info.angle, color, size);
+    const mark = infoMarkArrow(info.latlng, info.angle, color, size);
     mark.addTo(layer).
       on("mouseover", ev => ev.target.openPopup()).on("mouseout", ev => ev.target.closePopup()).
       on("mousedown", ev => ev.target.openPopup()).
