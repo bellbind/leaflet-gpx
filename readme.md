@@ -56,6 +56,7 @@ Decorations for steps
 - `data-hide-download`: hide "Download GPX file" panel when "true" (default: "")
 - `data-tile-template`: tile template url (default: `"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"`)
 - `data-attribution`: Leaflet attribution panel (default: `"&copy; &lt;a href="https://www.openstreetmap.org/copyright"&gt;OpenStreetMap&lt;/a&gt; contributors"`)
+- `data-show-side-view`: show info in the fixed side view instead of popup when "true" (default: "false")
 
 ### Unstable features
 
