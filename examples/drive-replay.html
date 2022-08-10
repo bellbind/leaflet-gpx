@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Drive recorder replayer</title>
+    <script type="module" src="../leaflet-gpx.js"></script>
+    <script type="module">
+      const viewer = document.querySelector("leaflet-gpx");
+      const gpxInput = document.querySelector("input#gpx");
+      gpxInput.addEventListener("input", ev => {
+        const file = gpxInput.files[0];
+        if (!file) return;
+        file.text().then(xml => viewer.setGpx(xml)).catch(alert);
+      });
+
+      const video = document.querySelector("video");
+      const videoSource = video.querySelector("source");
+      const recInput = document.querySelector("input#rec");
+      recInput.addEventListener("input", ev => {
+        const file = recInput.files[0];
+        if (!file) return;
+        videoSource.src = URL.createObjectURL(file);
+        video.load();
+      });
+      
+      const videoTrack = video.querySelector("track");
+      const subInput = document.querySelector("input#sub");
+      subInput.addEventListener("input", ev => {
+        const file = subInput.files[0];
+        if (!file) return;
+        video.textTracks[0].mode = "hidden";
+        videoTrack.src = URL.createObjectURL(file);
+        video.load();
+        video.textTracks[0].mode = "showing";
+      });
+      
+      const speedInput = document.getElementById("speed");
+      const offsetInput = document.getElementById("offset");
+      const syncViewerToVideo = () => {
+        if (!video.paused) return;
+        const speed = Number(speedInput.value);
+        const offset = Number(offsetInput.value);
+        const start = viewer.infos[0].time;
+        const cur = viewer.infos[Number(viewer.slider.value)].time;
+        const time = (cur - start) / 1000;
+        video.currentTime = (time - offset) / speed;
+      };
+      offsetInput.addEventListener("input", syncViewerToVideo);
+      viewer.addEventListener("cursor-changed", syncViewerToVideo);
+      
+      const syncVideoToViewer = () => {
+        if (video.paused) return; 
+        if (!viewer.infos) return;
+        const speed = Number(speedInput.value);
+        const offset = Number(offsetInput.value);
+        const current = Number(viewer.slider.value);
+        const msec = (offset + speed * video.currentTime) * 1000;
+        const vtime = (viewer.infos[0].time || 0) + msec;
+        const curtime = viewer.infos[current].time;
+        if (vtime === curtime) return;
+        if (vtime < curtime) {
+          for (let i = current; i >= 0; i--) {
+            if (viewer.infos[i].time <= vtime) {
+              //console.log("[vtime < curtime]", vtime, curtime, current, i);
+              viewer.setCursor({cursor: i});
+              break;
+            }
+          }
+        } else if (vtime > curtime) {
+          for (let i = current; i < viewer.infos.length; i++) {
+            if (viewer.infos[i].time >= vtime) {
+              //console.log("[vtime > curtime]", vtime, curtime, current, i);
+              viewer.setCursor({cursor: i});
+              break;
+            }
+          }
+        }
+      };
+      video.addEventListener("timeupdate", syncVideoToViewer);
+      document.querySelector("dialog").showModal();
+      document.body.addEventListener("contextmenu", ev => {document.querySelector("dialog").showModal();});
+    </script>
+    <style>
+      html, body {height: 100%;}
+      html, dialog, input {background-color: #3c4044; color: #dddddd;}
+      input[type=file] {}
+    </style>
+  </head>
+  <body style="margin: 0px; display: flex; flex-direction: column; align-items: center;">
+    <dialog>
+      <form method="dialog">
+        <label style="display: block;">Open GPX file: <input type="file" id="gpx" accept=".gpx,application/gpx+xml"/></label>
+        <label style="display: block;">Open Recorder file: <input type="file" id="rec" accept=".mp4,video/mp4"/></label>
+        <label style="display: block;">Open VTT file: <input type="file" id="sub" accept=".vtt,text/vtt"/></label>
+        <label style="display: block;">Playback 1sec as: <input type="number" id="speed" value="3.995" min="0" step="0.005"/>sec</label>
+        <label style="display: block;">Playback offset:  <input type="number" id="offset" value="0" step="0.05"/>sec</label>
+        <menu style=""><button value="default">hide</button></menu>
+      </form>
+    </dialog>
+    <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+      <leaflet-gpx style="flex: 1; width: 100vw;" data-info-size="20" data-info-colors="darkblue,crimson" data-hide-download="false" data-show-side-view="right" data-popup-font-size="16px" data-cursor-text="&#x1f6b5;"></leaflet-gpx>
+      <video style="display: block; width: 100vw; height: calc(9/16*100vw);"
+             controls="controls"><source src=""><track src="" default="default"></video>
+    </div>
+  </body>
+</html>
