@@ -2,9 +2,16 @@ import * as L from "https://unpkg.com/leaflet@1.8.0/dist/leaflet-src.esm.js";
 const leafletCssUrl = "https://unpkg.com/leaflet@1.8.0/dist/leaflet.css";
 
 const rootCss = `
+.root {
+  display: flex;
+}
+.side {
+  display: none;
+}
 .container {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 .map {
   flex: 9;
@@ -52,6 +59,12 @@ const LeafletGpx = class extends HTMLElement {
     const rootStyle = this.rootStyle = this.ownerDocument.createElement("style");
     rootStyle.textContent = rootCss;
 
+    const root = this.ownerDocument.createElement("div");
+    root.classList.add("root");
+    const sideView = this.sideView = this.ownerDocument.createElement("div");
+    sideView.classList.add("side");
+    if (this.dataset.showSideView === "true") sideView.style.display = "block"; 
+    
     const container = this.ownerDocument.createElement("div");
     container.classList.add("container");
     
@@ -120,7 +133,9 @@ const LeafletGpx = class extends HTMLElement {
 
     control.append(graph, slider, homeSlider);
     container.append(mapDiv, control);
-    shadow.append(rootStyle, container);
+    //shadow.append(rootStyle, container);
+    root.append(container, sideView);
+    shadow.append(rootStyle, root);
 
     // bind leaflet map
     const map = this.map = L.map(mapDiv).setView([0, 0], 0);
@@ -217,9 +232,11 @@ const LeafletGpx = class extends HTMLElement {
 };
 
 const updateCursorInfo = self => {
-  self.cursor.setPopupContent(infoPopup(self.infos, self.segTrees, self.slider.value | 0, self.homeSlider.value | 0));
+  const content = infoPopup(self.infos, self.segTrees, self.slider.value | 0, self.homeSlider.value | 0);
+  self.sideView.innerHTML = `<div style="padding: 1em;">${content}</div>`;
+  self.cursor.setPopupContent(content);
   self.map.setView(self.cursor.getLatLng(), self.map.getZoom());
-  self.cursor.openPopup();
+  if (self.dataset.showSideView !== "true") self.cursor.openPopup();
   updateGraphs(self);
   self.dispatchEvent(new CustomEvent("cursor-changed", {detail: self.getCursor()}));
 };
