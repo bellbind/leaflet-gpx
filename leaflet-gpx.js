@@ -63,7 +63,13 @@ const LeafletGpx = class extends HTMLElement {
     root.classList.add("root");
     const sideView = this.sideView = this.ownerDocument.createElement("div");
     sideView.classList.add("side");
-    if (this.dataset.showSideView === "true") sideView.style.display = "block"; 
+    if (this.dataset.showSideView === "right") {
+      sideView.style.display = "block";
+      root.style.flexDirection = "row";
+    } else if (this.dataset.showSideView === "left") {
+      sideView.style.display = "block";
+      root.style.flexDirection = "row-reverse";
+    }
     
     const container = this.ownerDocument.createElement("div");
     container.classList.add("container");
@@ -111,8 +117,8 @@ const LeafletGpx = class extends HTMLElement {
     // bottom control area
     const control = this.ownerDocument.createElement("div");
     control.classList.add("control");
-    control.tabIndex = 0;
-    control.addEventListener("keydown", ev => {
+    root.tabIndex = 0;
+    root.addEventListener("keydown", ev => {
       // slider keybind
       if (!this.cursor) return;
       if (ev.code === "ArrowDown") {
@@ -121,7 +127,7 @@ const LeafletGpx = class extends HTMLElement {
       } else if (ev.code === "ArrowUp") {
         this.slider.value = this.homeSlider.value;
       } else {
-        const step = (ev.controlKey ? 4 : 1) * (ev.shiftKey ? 10 : 1) * (ev.altKey ? 3 : 1) * (ev.metaKey ? 2 : 1);
+        const step = (ev.controlKey ? 10 : 1) * (ev.shiftKey ? 4 : 1) * (ev.altKey ? 3 : 1) * (ev.metaKey ? 2 : 1);
         const amount = ev.code === "ArrowRight" ? step : ev.code === "ArrowLeft" ? -step : 0;
         if (amount === 0) return;
         this.slider.value = Number(this.slider.value) + amount;
@@ -133,10 +139,9 @@ const LeafletGpx = class extends HTMLElement {
 
     control.append(graph, slider, homeSlider);
     container.append(mapDiv, control);
-    //shadow.append(rootStyle, container);
     root.append(container, sideView);
     shadow.append(rootStyle, root);
-
+    
     // bind leaflet map
     const map = this.map = L.map(mapDiv).setView([0, 0], 0);
     //this.map.locate({setView: true, maxZoom: 16});
@@ -185,7 +190,7 @@ const LeafletGpx = class extends HTMLElement {
     const dataSize = Number(dataset.infoSize);
     const dataColors = dataset.infoColors?.split(",")?.map(c => c.trim()) ?? [];
     const span = dataSpan > 0 ? dataSpan : 60;
-    const size = dataSpan > 0 ? dataSize : 10;
+    const size = dataSize > 0 ? dataSize : 10;
     const colors = dataColors.length > 0 ? dataColors : ["cyan", "magenta"];
     const layer = createGpxLayer(infos, segTrees, {span, size, colors});
     return {layer, gpx, xml, infos, segTrees};
@@ -236,7 +241,7 @@ const updateCursorInfo = self => {
   self.sideView.innerHTML = `<div style="padding: 1em;">${content}</div>`;
   self.cursor.setPopupContent(content);
   self.map.setView(self.cursor.getLatLng(), self.map.getZoom());
-  if (self.dataset.showSideView !== "true") self.cursor.openPopup();
+  if (!["left", "right"].includes(self.dataset.showSideView)) self.cursor.openPopup();
   updateGraphs(self);
   self.dispatchEvent(new CustomEvent("cursor-changed", {detail: self.getCursor()}));
 };
@@ -355,12 +360,17 @@ const angleNf = new Intl.NumberFormat(undefined, {
   unit: "degree", style: "unit", unitDisplay: "narrow",
   maximumFractionDigits: 0});
 const toClock = angle => {
-  const degree = angle / Math.PI * 180;
-  const minutes = ((angle / Math.PI + 2) % 2) * 6 * 60;
-  const m = Math.round(minutes % 60), h0 = Math.trunc(minutes / 60), h = h0 === 0 ? 12 : h0;
   const arrowChar = "&#x2b06;";
-  const arrow = `<span style="display: inline-block; transform: rotate3d(0, 0, 1, ${degree}deg);">${arrowChar}</span>`;
-  return `${arrow} ${h.toString().padStart(2)}:${m.toString().padStart(2, "0")} (${angleNf.format(degree).padStart(4)})`;
+  if (!Number.isFinite(angle)) {
+    const arrow = `<span style="display: inline-block;">${arrowChar}</span>`;
+    return `${arrow} ${"".padStart(2)}:${"".padStart(2)} (${"".padStart(5)})`;
+  } else {
+    const degree = angle / Math.PI * 180;
+    const minutes = ((angle / Math.PI + 2) % 2) * 6 * 60;
+    const m = Math.round(minutes % 60), h0 = Math.trunc(minutes / 60), h = h0 === 0 ? 12 : h0;
+    const arrow = `<span style="display: inline-block; transform: rotate3d(0, 0, 1, ${degree}deg);">${arrowChar}</span>`;
+    return `${arrow} ${h.toString().padStart(2)}:${m.toString().padStart(2, "0")} (${angleNf.format(degree).padStart(5)})`;
+  }
 };
 
 // cursor => home ordering is as a hole of total loop
@@ -419,7 +429,8 @@ const infoPopup = (infos, segTrees, index, baseIndex = 0) => {
   const labels = [
     `${ns}${degreeNf.format(lat).padStart(11)} ${ew}${degreeNf.format(lng).padStart(11)}`,
     "",
-    `move toward    : ${Number.isFinite(angle) ? toClock(angle): "(stop)"}`,
+    //`move toward    : ${Number.isFinite(angle) ? toClock(angle): toClock(NaN)}`,
+    `move toward    : ${toClock(angle)}`,
     Number.isFinite(speed) ? `speed          : <span style="position: relative;">${speedBar}<span style="position: absolute;">${speedNf.format(speed * 3.6).padStart(9)}/h</span></span>` : "",
     Number.isFinite(ele) ? `elevation      : ${eleNf.format(ele).padStart(8)}` : "",
     "",
@@ -436,7 +447,8 @@ const infoPopup = (infos, segTrees, index, baseIndex = 0) => {
     Number.isFinite(minEle) ? `min elevation  :  ${eleNf.format(minEle).padStart(7)}` : "",
     Number.isFinite(maxEle) ? `max elevation  :  ${eleNf.format(maxEle).padStart(7)}` : "",
     "",
-    `bearing        : ${Number.isFinite(dir) ? toClock(dir) : "(same point)"}`,
+    //`bearing        : ${Number.isFinite(dir) ? toClock(dir) : toClock(NaN)}`,
+    `bearing        : ${toClock(dir)}`,
     `direct length  : ${distanceNf.format(straight / 1000).padStart(9)}`,    
     "",
     Number.isFinite(date.getTime()) ? `        ${date.toLocaleString()}` : "",
