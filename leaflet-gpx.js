@@ -192,7 +192,7 @@ const LeafletGpx = class extends HTMLElement {
     const span = dataSpan > 0 ? dataSpan : 60;
     const size = dataSize > 0 ? dataSize : 10;
     const colors = dataColors.length > 0 ? dataColors : ["cyan", "magenta"];
-    const layer = createGpxLayer(infos, segTrees, {span, size, colors});
+    const layer = createGpxLayer(infos, segTrees, {span, size, colors}, dataset);
     return {layer, gpx, xml, infos, segTrees};
   }
   setGpxPath({layer, gpx, xml, infos, maxSpeedTree, segTrees}, dataset = this.dataset) {
@@ -241,7 +241,7 @@ const updateCursorInfo = self => {
   self.sideView.innerHTML = `<div style="padding: 1em;">${content}</div>`;
   self.cursor.setPopupContent(content);
   self.map.setView(self.cursor.getLatLng(), self.map.getZoom());
-  if (!["left", "right"].includes(self.dataset.showSideView)) self.cursor.openPopup();
+  if (!["left", "right", "hide"].includes(self.dataset.showSideView)) self.cursor.openPopup();
   updateGraphs(self);
   self.dispatchEvent(new CustomEvent("cursor-changed", {detail: self.getCursor()}));
 };
@@ -427,31 +427,29 @@ const infoPopup = (infos, segTrees, index, baseIndex = 0) => {
   const dir = direction(base.latlng, latlng);
   const straight = base.latlng.distanceTo(latlng);
   const labels = [
-    `${ns}${degreeNf.format(lat).padStart(11)} ${ew}${degreeNf.format(lng).padStart(11)}`,
+    `<span class="info-lat">${ns}${degreeNf.format(lat).padStart(11)}</span> <span class="info-lng">${ew}${degreeNf.format(lng).padStart(11)}</span>`,
     "",
-    //`move toward    : ${Number.isFinite(angle) ? toClock(angle): toClock(NaN)}`,
-    `move toward    : ${toClock(angle)}`,
-    Number.isFinite(speed) ? `speed          : <span style="position: relative;">${speedBar}<span style="position: absolute;">${speedNf.format(speed * 3.6).padStart(9)}/h</span></span>` : "",
-    Number.isFinite(ele) ? `elevation      : ${eleNf.format(ele).padStart(8)}` : "",
+    `move toward    : <span class="info-toward">${toClock(angle)}</span>`,
+    Number.isFinite(speed) ? `speed          : <span class="info-speed"><span style="position: relative;">${speedBar}<span style="position: absolute;">${speedNf.format(speed * 3.6).padStart(9)}/h</span></span></span>` : "",
+    Number.isFinite(ele) ? `elevation      : <span class="info-ele">${eleNf.format(ele).padStart(8)}</span>` : "",
     "",
-    Number.isFinite(distance) ? `moving distance: ${distanceNf.format(distance / 1000).padStart(9)}` : "",
-    Number.isFinite(total.s) ? `total time     : ${totalTime.padStart(9)}` : "",
-    Number.isFinite(movingTotal.s) ? `moving time    : ${movingTime.padStart(9)}` : "",
-    Number.isFinite(totalAve) ? `total ave      : ${speedNf.format(totalAve * 3.6).padStart(9)}/h` : "",
-    Number.isFinite(movingAve) ? `moving ave     : ${speedNf.format(movingAve * 3.6).padStart(9)}/h` : "",
-    Number.isFinite(elePlus) ? `elevation+     : +${eleNf.format(elePlus).padStart(7)}` : "",
-    Number.isFinite(eleMinus) ? `elevation-     : -${eleNf.format(eleMinus).padStart(7)}` : "",
+    Number.isFinite(distance) ? `moving distance: <span class="info-distance">${distanceNf.format(distance / 1000).padStart(9)}</span>` : "",
+    Number.isFinite(total.s) ? `total time     : <span class="info-total-time">${totalTime.padStart(9)}</span>` : "",
+    Number.isFinite(movingTotal.s) ? `moving time    : <span class="info-moving-time">${movingTime.padStart(9)}</span>` : "",
+    Number.isFinite(totalAve) ? `total ave      : <span class="info-total-ave">${speedNf.format(totalAve * 3.6).padStart(9)}/h</span>` : "",
+    Number.isFinite(movingAve) ? `moving ave     : <span class="info-moving-ave">${speedNf.format(movingAve * 3.6).padStart(9)}/h</span>` : "",
+    Number.isFinite(elePlus) ? `elevation+     : <span class="info-ele-plus">+${eleNf.format(elePlus).padStart(7)}</span>` : "",
+    Number.isFinite(eleMinus) ? `elevation-     : <span class="info-ele-minus">-${eleNf.format(eleMinus).padStart(7)}</span>` : "",
     "",
-    Number.isFinite(minSpeed) ? `min speed      : ${speedNf.format(minSpeed * 3.6).padStart(9)}/h` : "",
-    Number.isFinite(maxSpeed) ? `max speed      : ${speedNf.format(maxSpeed * 3.6).padStart(9)}/h` : "",
-    Number.isFinite(minEle) ? `min elevation  :  ${eleNf.format(minEle).padStart(7)}` : "",
-    Number.isFinite(maxEle) ? `max elevation  :  ${eleNf.format(maxEle).padStart(7)}` : "",
+    Number.isFinite(minSpeed) ? `min speed      : <span class="info-min-speed">${speedNf.format(minSpeed * 3.6).padStart(9)}/h</span>` : "",
+    Number.isFinite(maxSpeed) ? `max speed      : <span class="info-max-speed">${speedNf.format(maxSpeed * 3.6).padStart(9)}/h</span>` : "",
+    Number.isFinite(minEle) ? `min elevation  :  <span class="info-min-ele">${eleNf.format(minEle).padStart(7)}</span>` : "",
+    Number.isFinite(maxEle) ? `max elevation  :  <span class="info-max-ele">${eleNf.format(maxEle).padStart(7)}</span>` : "",
     "",
-    //`bearing        : ${Number.isFinite(dir) ? toClock(dir) : toClock(NaN)}`,
-    `bearing        : ${toClock(dir)}`,
-    `direct length  : ${distanceNf.format(straight / 1000).padStart(9)}`,    
+    `bearing        : <span class="info-bearing">${toClock(dir)}</span>`,
+    `direct length  : <span class="info-length">${distanceNf.format(straight / 1000).padStart(9)}</span>`,    
     "",
-    Number.isFinite(date.getTime()) ? `        ${date.toLocaleString()}` : "",
+    Number.isFinite(date.getTime()) ? `        <span class="info-date">${date.toLocaleString()}</span>` : "",
   ].join("\n");
   return `<pre class="info-popup">${labels}</pre>`;
 };
@@ -473,7 +471,7 @@ const infoMarkArrow = (latlng, angle, color, size) => {
     icon: L.divIcon({html: `<span style="${style}">${cursorText}</span>`, iconSize, iconAnchor, popupAnchor}),
   });
 };
-const createGpxLayer = (infos, segTrees, {span = 60, size = 10, colors = ["cyan", "magenta"]} = {}) => {
+const createGpxLayer = (infos, segTrees, {span = 60, size = 10, colors = ["cyan", "magenta"]} = {}, dataset = {}) => {
   // path
   const layer = L.featureGroup()
   const coords = infos.map(({latlng}) => latlng);
@@ -488,8 +486,12 @@ const createGpxLayer = (infos, segTrees, {span = 60, size = 10, colors = ["cyan"
     //const mark = infoMark(info.latlng, info.angle, color, size);
     const mark = infoMarkArrow(info.latlng, info.angle, color, size);
     mark.addTo(layer).
-      on("mouseover", ev => ev.target.openPopup()).on("mouseout", ev => ev.target.closePopup()).
-      on("mousedown", ev => ev.target.openPopup()).
+      on("mouseover", ev => {
+        if (!["left", "right", "hide"].includes(dataset.showSideView)) ev.target.openPopup();
+      }).on("mouseout", ev => ev.target.closePopup()).
+      on("mousedown", ev => {
+        if (!["left", "right", "hide"].includes(dataset.showSideView)) ev.target.openPopup();
+      }).
       bindPopup(infoPopup(infos, segTrees, i));
   });
   return layer;
