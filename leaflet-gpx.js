@@ -117,6 +117,10 @@ const LeafletGpx = class extends HTMLElement {
     // bottom control area
     const control = this.ownerDocument.createElement("div");
     control.classList.add("control");
+    if (this.dataset.hideControl === "true") {
+      control.style.display = "none";
+    }
+    
     root.tabIndex = 0;
     root.addEventListener("keydown", ev => {
       // slider keybind
@@ -136,7 +140,7 @@ const LeafletGpx = class extends HTMLElement {
       this.cursor.setLatLng(this.infos[this.slider.value | 0].latlng);
       updateCursorInfo(this);
     });
-
+    
     control.append(graph, slider, homeSlider);
     container.append(mapDiv, control);
     root.append(container, sideView);
@@ -240,7 +244,7 @@ const updateCursorInfo = self => {
   const content = infoPopup(self.infos, self.segTrees, self.slider.value | 0, self.homeSlider.value | 0);
   self.sideView.innerHTML = `<div style="padding: 1em;">${content}</div>`;
   self.cursor.setPopupContent(content);
-  self.map.setView(self.cursor.getLatLng(), self.map.getZoom());
+  if(self.dataset.fixedCenter !== "true") self.map.setView(self.cursor.getLatLng(), self.map.getZoom());
   if (!["left", "right", "hide"].includes(self.dataset.showSideView)) self.cursor.openPopup();
   updateGraphs(self);
   self.dispatchEvent(new CustomEvent("cursor-changed", {detail: self.getCursor()}));
@@ -443,8 +447,8 @@ const infoPopup = (infos, segTrees, index, baseIndex = 0) => {
     "",
     Number.isFinite(minSpeed) ? `min speed      : <span class="info-min-speed">${speedNf.format(minSpeed * 3.6).padStart(9)}/h</span>` : "",
     Number.isFinite(maxSpeed) ? `max speed      : <span class="info-max-speed">${speedNf.format(maxSpeed * 3.6).padStart(9)}/h</span>` : "",
-    Number.isFinite(minEle) ? `min elevation  :  <span class="info-min-ele">${eleNf.format(minEle).padStart(7)}</span>` : "",
-    Number.isFinite(maxEle) ? `max elevation  :  <span class="info-max-ele">${eleNf.format(maxEle).padStart(7)}</span>` : "",
+    Number.isFinite(minEle) ? `min elevation  :  <span class="info-min-ele">${eleNf.format(minEle).padStart(8)}</span>` : "",
+    Number.isFinite(maxEle) ? `max elevation  :  <span class="info-max-ele">${eleNf.format(maxEle).padStart(8)}</span>` : "",
     "",
     `bearing        : <span class="info-bearing">${toClock(dir)}</span>`,
     `direct length  : <span class="info-length">${distanceNf.format(straight / 1000).padStart(9)}</span>`,    
@@ -502,6 +506,7 @@ const createCursorHome = (infos, segTrees, {cursorText, homeText, cursorSize = 3
   const style = `font-size: ${cursorSize}px; vertical-slign: middle;`;
   const cursor = L.marker(infos[0].latlng, {
     icon: L.divIcon({html: `<span style="${style}">${cursorText}</span>`, iconSize, iconAnchor, popupAnchor}),
+    zIndexOffset: 200,
   }).bindPopup(infoPopup(infos, segTrees, 0));
   const home = L.marker(infos[0].latlng, {
     icon: L.divIcon({html: `<span style="${style}">${homeText}</span>`, iconSize, iconAnchor, popupAnchor}),
