@@ -506,6 +506,7 @@ const createCursorHome = (infos, segTrees, {cursorText, homeText, cursorSize = 3
   const style = `font-size: ${cursorSize}px; vertical-slign: middle;`;
   const cursor = L.marker(infos[0].latlng, {
     icon: L.divIcon({html: `<span style="${style}">${cursorText}</span>`, iconSize, iconAnchor, popupAnchor}),
+    zIndexOffset: 200,
   }).bindPopup(infoPopup(infos, segTrees, 0));
   const home = L.marker(infos[0].latlng, {
     icon: L.divIcon({html: `<span style="${style}">${homeText}</span>`, iconSize, iconAnchor, popupAnchor}),
