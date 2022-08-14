@@ -1,0 +1,176 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Drive recorder replayer (2 maps) HD</title>
+    <script type="module" src="../leaflet-gpx.js"></script>
+    <script type="module">
+      const viewer = document.querySelector("leaflet-gpx#main");
+      const submap = document.querySelector("leaflet-gpx#sub");
+      viewer.addEventListener("cursor-changed", ev => {
+        submap.setCursor(ev.detail);
+      });
+
+      const gpxInput = document.querySelector("input#gpx");
+      gpxInput.addEventListener("input", ev => {
+        const file = gpxInput.files[0];
+        if (!file) return;
+        file.text().then(xml => {
+          viewer.setGpx(xml);
+          submap.setGpx(xml);
+        }).catch(alert);
+      });
+
+      const video = document.querySelector("video");
+      const videoSource = video.querySelector("source");
+      const recInput = document.querySelector("input#rec");
+      recInput.addEventListener("input", ev => {
+        const file = recInput.files[0];
+        if (!file) return;
+        videoSource.src = URL.createObjectURL(file);
+        video.load();
+      });
+      
+      const videoTrack = video.querySelector("track");
+      const subInput = document.querySelector("input#sub");
+      subInput.addEventListener("input", ev => {
+        const file = subInput.files[0];
+        if (!file) return;
+        video.textTracks[0].mode = "hidden";
+        videoTrack.src = URL.createObjectURL(file);
+        video.load();
+        video.textTracks[0].mode = "showing";
+      });
+      
+      const speedInput = document.getElementById("speed");
+      const offsetInput = document.getElementById("offset");
+      const syncViewerToVideo = () => {
+        if (!video.paused) return;
+        const speed = Number(speedInput.value);
+        const offset = Number(offsetInput.value);
+        const start = viewer.infos[0].time;
+        const cur = viewer.infos[Number(viewer.slider.value)].time;
+        const time = (cur - start) / 1000;
+        video.currentTime = (time - offset) / speed;
+      };
+      offsetInput.addEventListener("input", syncViewerToVideo);
+      viewer.addEventListener("cursor-changed", syncViewerToVideo);
+
+      const syncVideoToViewer = () => {
+        if (video.paused) return; 
+        if (!viewer.infos) return;
+        const speed = Number(speedInput.value);
+        const offset = Number(offsetInput.value);
+        const current = Number(viewer.slider.value);
+        const msec = (offset + speed * video.currentTime) * 1000;
+        const vtime = (viewer.infos[0].time || 0) + msec;
+        const curtime = viewer.infos[current].time;
+        if (vtime === curtime) return;
+        if (vtime < curtime) {
+          for (let i = current; i >= 0; i--) {
+            if (viewer.infos[i].time <= vtime) {
+              //console.log("[vtime < curtime]", vtime, curtime, current, i);
+              viewer.setCursor({cursor: i});
+              break;
+            }
+          }
+        } else if (vtime > curtime) {
+          for (let i = current; i < viewer.infos.length; i++) {
+            if (viewer.infos[i].time >= vtime) {
+              //console.log("[vtime > curtime]", vtime, curtime, current, i);
+              viewer.setCursor({cursor: i});
+              break;
+            }
+          }
+        }
+      };
+      video.addEventListener("timeupdate", syncVideoToViewer);
+
+      const infoLeft = document.getElementById("info-left");
+      const infoMiddle = document.getElementById("info-middle");
+      const infoRight = document.getElementById("info-right");
+      viewer.addEventListener("cursor-changed", ev => {
+        const date = viewer.sideView.querySelector(".info-date").innerHTML;
+        const lat = viewer.sideView.querySelector(".info-lat").innerHTML;
+        const lng = viewer.sideView.querySelector(".info-lng").innerHTML;
+        const toward = viewer.sideView.querySelector(".info-toward").innerHTML;
+        const speed = viewer.sideView.querySelector(".info-speed").innerHTML;
+        const ele = viewer.sideView.querySelector(".info-ele").innerHTML;
+        const distance = viewer.sideView.querySelector(".info-distance").innerHTML;
+        const totalTime = viewer.sideView.querySelector(".info-total-time").innerHTML;
+        const movingTime = viewer.sideView.querySelector(".info-moving-time").innerHTML;
+        const totalAve = viewer.sideView.querySelector(".info-total-ave").innerHTML;
+        const movingAve = viewer.sideView.querySelector(".info-moving-ave").innerHTML;
+        const elePlus = viewer.sideView.querySelector(".info-ele-plus").innerHTML;
+        const eleMinus = viewer.sideView.querySelector(".info-ele-minus").innerHTML;
+        const minSpeed = viewer.sideView.querySelector(".info-min-speed").innerHTML;
+        const maxSpeed = viewer.sideView.querySelector(".info-max-speed").innerHTML;
+        const minEle = viewer.sideView.querySelector(".info-min-ele").innerHTML;
+        const maxEle = viewer.sideView.querySelector(".info-max-ele").innerHTML;
+        const bearing = viewer.sideView.querySelector(".info-bearing").innerHTML;
+        const length = viewer.sideView.querySelector(".info-length").innerHTML;
+        infoLeft.innerHTML = `   ${lat}  ${lng}
+
+         speed: ${speed}
+ moving toward: ${toward}
+      distance: ${distance}
+   moving time: ${movingTime}
+moving average: ${movingAve}
+`;
+        infoMiddle.innerHTML = `        ${date}
+
+       max speed: ${maxSpeed}
+         bearing: ${bearing}
+ direct distance: ${length}
+      total time: ${totalTime}
+   total average: ${totalAve}
+`;        
+        infoRight.innerHTML = `
+
+    elevation: ${ele}
+max elevation: ${maxEle}
+min elevation: ${minEle}
+         ele+: ${elePlus}
+         ele-: ${eleMinus}
+`;
+      });
+
+      document.querySelector("dialog").showModal();
+      document.body.addEventListener("contextmenu", ev => {document.querySelector("dialog").showModal();});
+    </script>
+    <style>
+      html {height: 100%;}
+      html, dialog, input {background-color: #3c4044; color: #dddddd;}
+      input[type=file] {}
+      body {
+          width: 1280px;
+          heigh: 720px;
+          margin: 0px;
+      }
+    </style>
+  </head>
+  <body>
+    <dialog>
+      <form method="dialog">
+        <label style="display: block;">Open GPX file: <input type="file" id="gpx" accept=".gpx,application/gpx+xml"/></label>
+        <label style="display: block;">Open Recorder file: <input type="file" id="rec" accept=".mp4,video/mp4"/></label>
+        <label style="display: block;">Open VTT file: <input type="file" id="sub" accept=".vtt,text/vtt"/></label>
+        <label style="display: block;">Playback 1sec as: <input type="number" id="speed" value="3.995" min="0" step="0.0005"/>sec</label>
+        <label style="display: block;">Playback offset:  <input type="number" id="offset" value="0" step="0.05"/>sec</label>
+        <menu style="display: flex; align-items: center; justify-content: center;"><button value="default">hide <span>(INFO: right click to reopen)</span></button></menu>
+      </form>
+    </dialog>
+    <div style="position: relative; border: solid black;">
+      <leaflet-gpx id="main" style="position: absolute; top: 0px; left: 960px; width: 320px; height: 400px;"
+                   data-info-size="20" data-info-colors="darkblue,crimson" data-hide-download="false" data-show-side-view="hide" data-popup-font-size="16px" data-cursor-text="&#x1f6b4;" data-cursor-size="40"></leaflet-gpx>
+      <leaflet-gpx id="sub" style="position: absolute; top: 400px; left: 960px; width: 320px; height: 320px;"
+                   data-info-size="20" data-info-colors="darkblue,crimson" data-hide-download="false" data-show-side-view="hide" data-popup-font-size="16px" data-cursor-text="&#x1f6b4;" data-cursor-size="40"
+                   data-info-span="600" data-fixed-center="true" data-hide-control="true"></leaflet-gpx>
+      <pre id="info-left" style="position: absolute; top: 540px; left: 20px; width: 300px; height: 180px; font-size: 15px; font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;"></pre>
+      <pre id="info-middle" style="position: absolute; top: 540px; left: 340px; width: 300px; height: 180px; font-size: 15px; font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;"></pre>
+      <pre id="info-right" style="position: absolute; top: 540px; left: 660px; width: 300px; height: 180px; font-size: 15px; font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;"></pre>
+      <video style="position: absolute; top: 0px; left:0px; width: 960px; height:540px;"
+             controls="controls"><source src=""><track src="" default="default"></video>
+    </div>
+  </body>
+</html>
