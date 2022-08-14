@@ -117,6 +117,10 @@ const LeafletGpx = class extends HTMLElement {
     // bottom control area
     const control = this.ownerDocument.createElement("div");
     control.classList.add("control");
+    if (this.dataset.hideControl === "true") {
+      control.style.display = "none";
+    }
+    
     root.tabIndex = 0;
     root.addEventListener("keydown", ev => {
       // slider keybind
@@ -136,7 +140,7 @@ const LeafletGpx = class extends HTMLElement {
       this.cursor.setLatLng(this.infos[this.slider.value | 0].latlng);
       updateCursorInfo(this);
     });
-
+    
     control.append(graph, slider, homeSlider);
     container.append(mapDiv, control);
     root.append(container, sideView);
@@ -240,7 +244,7 @@ const updateCursorInfo = self => {
   const content = infoPopup(self.infos, self.segTrees, self.slider.value | 0, self.homeSlider.value | 0);
   self.sideView.innerHTML = `<div style="padding: 1em;">${content}</div>`;
   self.cursor.setPopupContent(content);
-  self.map.setView(self.cursor.getLatLng(), self.map.getZoom());
+  if(self.dataset.fixedCenter !== "true") self.map.setView(self.cursor.getLatLng(), self.map.getZoom());
   if (!["left", "right", "hide"].includes(self.dataset.showSideView)) self.cursor.openPopup();
   updateGraphs(self);
   self.dispatchEvent(new CustomEvent("cursor-changed", {detail: self.getCursor()}));
