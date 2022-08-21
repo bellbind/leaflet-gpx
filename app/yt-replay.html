@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>Drive recorder replayer (YouTube) HD</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="crossorigin" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Emoji:wght@700&display=swap" rel="stylesheet">
+    <script type="module" src="../leaflet-gpx.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script type="module">
+      const jsonToHash = json => new URLSearchParams(json).toString();
+      const hashToJson = hash => {
+        const json = Object.fromEntries(new URLSearchParams(hash).entries());
+        json.speed = Number(json.speed);
+        json.offset = Number(json.offset);
+        return json;
+      };
+      
+      await new Promise(f => {window.onYouTubeIframeAPIReady = f;});
+      const viewer = document.querySelector("leaflet-gpx#main");
+      const submap = document.querySelector("leaflet-gpx#sub");
+      viewer.addEventListener("cursor-changed", ev => {
+        submap.setCursor(ev.detail);
+      });
+      const video = new YT.Player("yt", {
+        //width: "960px", height: "540px",
+        playerVars: {autoplay: 0, cc_lang_pref: "ja", cc_load_policy: 1, rel: 0},
+        events: {onStateChange: ev => videoStateChange(ev)},
+      });
+      
+      const gpxInput = document.getElementById("gpx");
+      const vidInput = document.getElementById("vid");
+      const speedInput = document.getElementById("speed");
+      const offsetInput = document.getElementById("offset");
+      const openButton = document.getElementById("open");
+
+      const dialog = document.querySelector("dialog");
+      dialog.addEventListener("close", ev => {
+        const gpx = gpxInput.value.trim();
+        const vid = vidInput.value.trim();
+        const speed = Number(speedInput.value);
+        const offset = Number(offsetInput.value);
+        const json = {gpx, vid, speed, offset};
+        history.pushState(json, null, `${location.pathname}#${jsonToHash(json)}`);
+        play();
+      });
+      
+      const chooser = document.getElementById("chooser");
+      const entries = await (await fetch("./yt-index.json")).json();
+      //console.log(entries);
+      for (let i = 0; i < entries.length; i++) {
+        if (!entries[i] || !entries[i].vid || !entries[i].gpx) continue;
+        const option = document.createElement("option");
+        option.value = JSON.stringify(entries[i]);
+        option.textContent = JSON.stringify(entries[i]);
+        chooser.append(option);
+      }
+      chooser.addEventListener("change", ev => {
+        if (chooser.selectedIndex === 0) {
+          history.replaceState(null, null, location.pathname);
+          return;
+        };
+        const json = JSON.parse(chooser.value);
+        history.pushState(json, null, `${location.pathname}#${jsonToHash(json)}`);
+        loadHashState();
+      });
+
+      const vidFromUrl = url => {
+        return new URL(url).searchParams.get("v");
+      };
+      const state = {};
+      const play = () => {
+        const vid = vidInput.value.trim();
+        const gpx = gpxInput.value.trim();
+        if (state.vid !== vid) {
+          video.loadVideoById({videoId: vid, suggestedQuality: "hd1080"});
+          video.getOptions("cc");
+          video.setOption("cc", "reload", true);
+          //video.pauseVideo();
+        }
+        if (state.gpx !== gpx) {
+          fetch(gpxInput.value.trim()).then(res => res.text()).then(xml => {
+            viewer.setGpx(xml);
+            submap.setGpx(xml);
+          });
+        }
+        state.vid = vid;
+        state.gpx = gpx;
+      };
+      const loadHashState = () => {
+        console.log("loadHashState", location.hash);
+        const hash = location.hash.replace(/^#/, "");
+        if (!hash) {
+          return;
+        }
+        const json = hashToJson(hash);
+        chooser.value = JSON.stringify(json);
+        gpxInput.value = json.gpx;
+        vidInput.value = json.vid;
+        speedInput.value = json.speed;
+        offsetInput.value = json.offset;
+        dialog.showModal();
+      };
+      window.addEventListener("popstate", loadHashState);
+      
+      const updateInfo = async () => {
+        const vid = vidInput.value.trim();
+        const gpx = gpxInput.value.trim();
+        const speed = speedInput.value;
+        const offset = offsetInput.value;
+        const setting = {gpx, vid, speed, offset};
+        history.pushState(setting, null, `${location.pathname}#${jsonToHash(setting)}`);
+      };
+      document.body.addEventListener("contextmenu", ev => {dialog.showModal();});
+      
+      const syncViewerToVideo = () => {
+        if (video.getPlayerState() === YT.PlayerState.PLAYING) return;
+        const speed = Number(speedInput.value);
+        const offset = Number(offsetInput.value);
+        const start = viewer.infos[0].time;
+        const cur = viewer.infos[Number(viewer.slider.value)].time;
+        const time = (cur - start) / 1000;
+        video.seekTo((time - offset) / speed, true);
+      };
+      viewer.addEventListener("cursor-changed", syncViewerToVideo);
+
+      const syncVideoToViewer = () => {
+        if (video.getPlayerState() !== YT.PlayerState.PLAYING) return;
+        if (!viewer.infos) return;
+        const speed = Number(speedInput.value);
+        const offset = Number(offsetInput.value);
+        const current = Number(viewer.slider.value);
+        const msec = (offset + speed * video.getCurrentTime()) * 1000;
+        const vtime = (viewer.infos[0].time || 0) + msec;
+        const curtime = viewer.infos[current].time;
+        if (vtime === curtime) return;
+        if (vtime < curtime) {
+          for (let i = current; i >= 0; i--) {
+            if (viewer.infos[i].time <= vtime) {
+              //console.log("[vtime < curtime]", vtime, curtime, current, i);
+              viewer.setCursor({cursor: i});
+              break;
+            }
+          }
+        } else if (vtime > curtime) {
+          for (let i = current; i < viewer.infos.length; i++) {
+            if (viewer.infos[i].time >= vtime) {
+              //console.log("[vtime > curtime]", vtime, curtime, current, i);
+              viewer.setCursor({cursor: i});
+              break;
+            }
+          }
+        }
+      };
+      let timer = null;
+      const videoStateChange = ev => {
+        // YT.Player: cannot detect pause & seeking state. so not support seeking to sync viewer
+        if (ev.data === YT.PlayerState.PLAYING) {
+          if (timer) clearInterval(timer);
+          timer = setInterval(syncVideoToViewer, 500);
+        }
+        if (ev.data === YT.PlayerState.PAUSED || ev.data === YT.PlayerState.ENDED) {
+          clearInterval(timer);
+          timer = null;
+        }
+      };
+      
+      const infoLeft = document.getElementById("info-left");
+      const infoMiddle = document.getElementById("info-middle");
+      const infoRight = document.getElementById("info-right");
+      viewer.addEventListener("cursor-changed", ev => {
+        const date = viewer.sideView.querySelector(".info-date").innerHTML;
+        const lat = viewer.sideView.querySelector(".info-lat").innerHTML;
+        const lng = viewer.sideView.querySelector(".info-lng").innerHTML;
+        const toward = viewer.sideView.querySelector(".info-toward").innerHTML;
+        const speed = viewer.sideView.querySelector(".info-speed").innerHTML;
+        const ele = viewer.sideView.querySelector(".info-ele").innerHTML;
+        const distance = viewer.sideView.querySelector(".info-distance").innerHTML;
+        const totalTime = viewer.sideView.querySelector(".info-total-time").innerHTML;
+        const movingTime = viewer.sideView.querySelector(".info-moving-time").innerHTML;
+        const totalAve = viewer.sideView.querySelector(".info-total-ave").innerHTML;
+        const movingAve = viewer.sideView.querySelector(".info-moving-ave").innerHTML;
+        const elePlus = viewer.sideView.querySelector(".info-ele-plus").innerHTML;
+        const eleMinus = viewer.sideView.querySelector(".info-ele-minus").innerHTML;
+        const minSpeed = viewer.sideView.querySelector(".info-min-speed").innerHTML;
+        const maxSpeed = viewer.sideView.querySelector(".info-max-speed").innerHTML;
+        const minEle = viewer.sideView.querySelector(".info-min-ele").innerHTML;
+        const maxEle = viewer.sideView.querySelector(".info-max-ele").innerHTML;
+        const bearing = viewer.sideView.querySelector(".info-bearing").innerHTML;
+        const length = viewer.sideView.querySelector(".info-length").innerHTML;
+        infoLeft.innerHTML = `   ${lat}  ${lng}
+
+<span style="color: #aaaaaa">         speed:</span> ${speed}
+<span style="color: #aaaaaa"> moving toward:</span> ${toward}
+<span style="color: #aaaaaa">      distance:</span> ${distance}
+
+<span style="color: #aaaaaa">   moving time:</span> ${movingTime}
+<span style="color: #aaaaaa">moving average:</span> ${movingAve}
+`;
+        infoMiddle.innerHTML = `        ${date}
+
+<span style="color: #aaaaaa">       max speed:</span> ${maxSpeed}
+<span style="color: #aaaaaa">         bearing:</span> ${bearing}
+<span style="color: #aaaaaa"> direct distance:</span> ${length}
+
+<span style="color: #aaaaaa">      total time:</span> ${totalTime}
+<span style="color: #aaaaaa">   total average:</span> ${totalAve}
+`;        
+        infoRight.innerHTML = `
+
+<span style="color: #aaaaaa">    elevation:</span> ${ele}
+
+<span style="color: #aaaaaa">max elevation:</span> ${maxEle}
+<span style="color: #aaaaaa">min elevation:</span> ${minEle}
+<span style="color: #aaaaaa">         ele+:</span> ${elePlus}
+<span style="color: #aaaaaa">         ele-:</span> ${eleMinus}
+`;
+      });
+
+      loadHashState();
+    </script>
+    <style>
+      html {height: 100%;}
+      html, dialog, input {background-color: #3c4044; color: #dddddd;}
+      input[type=file] {}
+      body {
+          height: 100%;
+          margin: 0px;
+      }
+      video::cue {
+          opacity: 1;
+          background-color: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <dialog>
+      <form method="dialog">
+        <label style="display: block;">GPX Path: <input id="gpx" value="../gpx/20220807-103922.gpx" /></label>
+        <label style="display: block;">Youtube VID: <input id="vid" value="CWagk21GCLM" /></label>
+        <label style="display: block;">Playback 1sec as: <input type="number" id="speed" value="3.995" min="0" step="0.0005"/>sec</label>
+        <label style="display: block;">Playback offset:  <input type="number" id="offset" value="38" step="0.05"/>sec</label>
+        <menu style="display: flex; align-items: center; justify-content: center;"><button id="open" value="default">open <span>(INFO: right click to reopen)</span></button></menu>
+      </form>
+    </dialog>
+    <div style="position: relative; border: none;">
+      <leaflet-gpx id="main" style="position: absolute; top: calc(100vw * 720 / 960); left: 0vw; width: 66vw; height: calc(100vh - 3vw - 100vw * 720 / 960);"
+                   data-info-size="20" data-info-colors="darkblue,crimson" data-hide-download="false" data-show-side-view="hide" data-popup-font-size="16px"
+                   data-home-text="<span style='color: green;font-family: Noto Emoji'>&#x1f3e0;</span>"
+                   data-cursor-text="&#x1f6b4;" data-cursor-size="40"></leaflet-gpx>
+      <leaflet-gpx id="sub" style="position: absolute; top: calc(100vw * 720 / 960); left: 67vw; width: 33vw; height: calc(calc(100vh -  3vw - 100vw * 720 / 960) * 0.9);"
+                   data-info-size="15" data-info-colors="darkblue,crimson" data-hide-download="false" data-show-side-view="hide" data-popup-font-size="16px"
+                   data-home-text="<span style='color: green;font-family: Noto Emoji'>&#x1f3e0;</span>"
+                   data-cursor-text="&#x1f6b4;" data-cursor-size="30"
+                   data-info-span="600" data-fixed-center="true" data-hide-control="true" data-stop-info-update="true"></leaflet-gpx>
+      
+      <pre id="info-left" style="position: absolute; top: calc(100vw * 9 / 16); left: calc(100vw * 20 / 960); width: calc(100vw * 300 / 960); height: calc(100vw * 180 / 960); font-size: calc(100vw * 15 / 960); font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;"></pre>
+      <pre id="info-middle" style="position: absolute; top: calc(100vw * 9 / 16); left: calc(100vw * 340 / 960); width: calc(100vw * 300 / 960); height: calc(100vw * 180 / 960); font-size: calc(100vw * 15 / 960); font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;"></pre>
+      <pre id="info-right" style="position: absolute; top: calc(100vw * 9 / 16); left: calc(100vw * 660 / 960); width: calc(100vw * 300 / 960); height: calc(100vw * 180 / 960); font-size: calc(100vw * 15 / 960); font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;"></pre>
+
+      <div id="yt" style="position: absolute; top: 0vh; left: 0vw; width: 100vw; height: calc(100vw * 9 / 16);"></div>
+
+      <div style="position: absolute; top: calc(100vh - 3vw); left: 0vw; width: 100vw; height: 3vw font-size: 1.5vw">
+        <select id="chooser" style="width: 100%;">
+          <option> -- Choose a viewer setting -- </option>
+        </select>
+      </div>
+    </div>
+  </body>
+</html>
