@@ -241,6 +241,7 @@ const LeafletGpx = class extends HTMLElement {
 };
 
 const updateCursorInfo = self => {
+  if (self.dataset.stopInfoUpdate === "true") return;
   const content = infoPopup(self.infos, self.segTrees, self.slider.value | 0, self.homeSlider.value | 0);
   self.sideView.innerHTML = `<div style="padding: 1em;">${content}</div>`;
   self.cursor.setPopupContent(content);
