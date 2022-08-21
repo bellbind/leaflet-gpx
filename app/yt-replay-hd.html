@@ -26,7 +26,7 @@
       const video = new YT.Player("yt", {
         width: "960px", height: "540px",
         playerVars: {autoplay: 0, cc_lang_pref: "ja", cc_load_policy: 1},
-        events: {onStateChange: () => videoStateChange()},
+        events: {onStateChange: ev => videoStateChange(ev)},
       });
       
       const gpxInput = document.getElementById("gpx");
@@ -125,7 +125,7 @@
       viewer.addEventListener("cursor-changed", syncViewerToVideo);
 
       const syncVideoToViewer = () => {
-        if (video.getPlayerState() !== YT.PlayerState.PLAYING) return; 
+        if (video.getPlayerState() !== YT.PlayerState.PLAYING) return;
         if (!viewer.infos) return;
         const speed = Number(speedInput.value);
         const offset = Number(offsetInput.value);
@@ -152,7 +152,17 @@
           }
         }
       };
-      const videoStateChange = () => syncVideoToViewer();
+      let timer = null;
+      const videoStateChange = ev => {
+        if (ev.data === YT.PlayerState.PLAYING) {
+          if (timer) clearInterval(timer);
+          timer = setInterval(syncVideoToViewer, 500);
+        }
+        if (ev.data === YT.PlayerState.PAUSED || ev.data === YT.PlayerState.ENDED) {
+          clearInterval(timer);
+          timer = null;
+        }
+      };
 
       const infoLeft = document.getElementById("info-left");
       const infoMiddle = document.getElementById("info-middle");
