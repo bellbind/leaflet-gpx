@@ -24,8 +24,8 @@
         submap.setCursor(ev.detail);
       });
       const video = new YT.Player("yt", {
-        width: "960px", height: "540px",
-        playerVars: {autoplay: 0, cc_lang_pref: "ja", cc_load_policy: 1},
+        //width: "960px", height: "540px",
+        playerVars: {autoplay: 0, cc_lang_pref: "ja", cc_load_policy: 1, rel: 0},
         events: {onStateChange: ev => videoStateChange(ev)},
       });
       
@@ -64,7 +64,6 @@
         const json = JSON.parse(chooser.value);
         history.pushState(json, null, `${location.pathname}#${jsonToHash(json)}`);
         loadHashState();
-        dialog.showModal();
       });
 
       const vidFromUrl = url => {
@@ -76,6 +75,8 @@
         const gpx = gpxInput.value.trim();
         if (state.vid !== vid) {
           video.loadVideoById({videoId: vid, suggestedQuality: "hd1080"});
+          video.getOptions("cc");
+          video.setOption("cc", "reload", true);
           //video.pauseVideo();
         }
         if (state.gpx !== gpx) {
@@ -154,6 +155,7 @@
       };
       let timer = null;
       const videoStateChange = ev => {
+        // YT.Player: cannot detect pause & seeking state. so not support seeking to sync viewer
         if (ev.data === YT.PlayerState.PLAYING) {
           if (timer) clearInterval(timer);
           timer = setInterval(syncVideoToViewer, 500);
@@ -163,7 +165,7 @@
           timer = null;
         }
       };
-
+      
       const infoLeft = document.getElementById("info-left");
       const infoMiddle = document.getElementById("info-middle");
       const infoRight = document.getElementById("info-right");
