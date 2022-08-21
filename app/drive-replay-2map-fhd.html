@@ -48,7 +48,7 @@
       const speedInput = document.getElementById("speed");
       const offsetInput = document.getElementById("offset");
       const syncViewerToVideo = () => {
-        if (!video.paused) return;
+        if (video.seeking | !video.paused) return;
         const speed = Number(speedInput.value);
         const offset = Number(offsetInput.value);
         const start = viewer.infos[0].time;
@@ -60,7 +60,7 @@
       viewer.addEventListener("cursor-changed", syncViewerToVideo);
 
       const syncVideoToViewer = () => {
-        if (video.paused) return; 
+        if (!video.seeking && video.paused) return; 
         if (!viewer.infos) return;
         const speed = Number(speedInput.value);
         const offset = Number(offsetInput.value);
@@ -88,6 +88,7 @@
         }
       };
       video.addEventListener("timeupdate", syncVideoToViewer);
+      video.addEventListener("seeking", syncVideoToViewer);
 
       const infoLeft = document.getElementById("info-left");
       const infoMiddle = document.getElementById("info-middle");
