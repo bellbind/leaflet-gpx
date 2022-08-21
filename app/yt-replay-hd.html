@@ -25,7 +25,7 @@
       });
       const video = new YT.Player("yt", {
         width: "960px", height: "540px",
-        playerVars: {autoplay: 0, cc_lang_pref: "ja"},
+        playerVars: {autoplay: 0, cc_lang_pref: "ja", cc_load_policy: 1},
         events: {onStateChange: () => videoStateChange()},
       });
       
@@ -114,7 +114,7 @@
       document.body.addEventListener("contextmenu", ev => {dialog.showModal();});
       
       const syncViewerToVideo = () => {
-        if (!video.getPlayerState() === YT.PlayerState.PLAYING) return;
+        if (video.getPlayerState() === YT.PlayerState.PLAYING) return;
         const speed = Number(speedInput.value);
         const offset = Number(offsetInput.value);
         const start = viewer.infos[0].time;
