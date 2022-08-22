@@ -24,7 +24,6 @@
         submap.setCursor(ev.detail);
       });
       const video = new YT.Player("yt", {
-        //width: "960px", height: "540px",
         playerVars: {autoplay: 0, cc_lang_pref: "ja", cc_load_policy: 1, rel: 0},
         events: {onStateChange: ev => videoStateChange(ev)},
       });
@@ -221,17 +220,71 @@
       loadHashState();
     </script>
     <style>
-      html {height: 100%;}
+      html {
+          height: 100%;
+          height: --webkit-fill-available;
+      }
       html, dialog, input {background-color: #3c4044; color: #dddddd;}
       input[type=file] {}
       body {
           height: 100%;
+          height: --webkit-fill-available;
           margin: 0px;
       }
       video::cue {
           opacity: 1;
           background-color: transparent;
       }
+      #info-left, #info-middle, #info-right, #chooser {
+          font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;
+      }
+      @media (orientation: portrait) {
+          #main {
+              position: absolute; top: calc(100vw * 720 / 960); left: 0vw; width: 66vw; height: calc(100vh - 100vw * 750 / 960);
+          }
+          #sub {
+              position: absolute; top: calc(100vw * 720 / 960); left: 67vw; width: 33vw; height: calc(calc(100vh -  100vw * 750 / 960) * 0.9);
+          }
+          #info-left {
+              position: absolute; top: calc(100vw * 9 / 16); left: calc(100vw * 20 / 960); width: calc(100vw * 300 / 960); height: calc(100vw * 180 / 960); font-size: calc(100vw * 15 / 960);
+          }
+          #info-middle {
+              position: absolute; top: calc(100vw * 9 / 16); left: calc(100vw * 340 / 960); width: calc(100vw * 300 / 960); height: calc(100vw * 180 / 960); font-size: calc(100vw * 15 / 960);
+          }
+          #info-right {
+              position: absolute; top: calc(100vw * 9 / 16); left: calc(100vw * 660 / 960); width: calc(100vw * 300 / 960); height: calc(100vw * 180 / 960); font-size: calc(100vw * 15 / 960);
+          }
+          #yt {
+              position: absolute; top: 0vh; left: 0vw; width: 100vw; height: calc(100vw * 9 / 16);
+          }
+          #controls-area {
+              position: absolute; top: calc(100vh - 100vw * 30 / 960); left: 0vw; width: 100vw; height: calc(100vw * 15 / 960); font-size: calc(100vw * 15 / 960);
+          }
+      }
+     
+     @media (orientation: landscape) {
+          #main {
+              position: absolute; top: 0vh; left: calc(100vh * 960 / 750); width: calc(100vw - 100vh * 960 / 750); height: calc(100vh * 400 / 750);
+          }
+          #sub {
+              position: absolute; top: calc(100vh * 400 / 750); left: calc(100vh * 960 / 750); width: calc(100vw - 100vh * 960 / 750); height: calc(100vh * 320 / 750);
+          }
+          #info-left {
+              position: absolute; top: calc(100vh * 540 / 750); left: calc(100vh * 20 / 750); width: calc(100vh * 300 / 750); height: calc(100vh * 180 / 750); font-size: calc(100vh * 15 / 750);
+          }
+          #info-middle {
+              position: absolute; top: calc(100vh * 540 / 750); left: calc(100vh * 340 / 750); width: calc(100vh * 300 / 750); height: calc(100vh * 180 / 750); font-size: calc(100vh * 15 /  750);
+          }
+          #info-right {
+              position: absolute; top: calc(100vh * 540 / 750); left: calc(100vh * 660 / 750); width: calc(100vh * 300 / 750); height: calc(100vh * 180 / 750); font-size: calc(100vh * 15 / 750);
+          }
+          #yt {
+              position: absolute; top: 0vh; left: 0vh; width: calc(100vh * 960 / 750); height: calc(100vh * 540 / 750);
+          }
+          #controls-area {
+              position: absolute; top: calc(100vh * 720 / 750); left: 0vh; width: 100vw; height: calc(100vh * 15 / 750); font-size: calc(100vh * 15 / 750);
+          }
+     }
     </style>
   </head>
   <body>
@@ -245,23 +298,21 @@
       </form>
     </dialog>
     <div style="position: relative; border: none;">
-      <leaflet-gpx id="main" style="position: absolute; top: calc(100vw * 720 / 960); left: 0vw; width: 66vw; height: calc(100vh - 3vw - 100vw * 720 / 960);"
+      <leaflet-gpx id="main" 
                    data-info-size="20" data-info-colors="darkblue,crimson" data-hide-download="false" data-show-side-view="hide" data-popup-font-size="16px"
                    data-home-text="<span style='color: green;font-family: Noto Emoji'>&#x1f3e0;</span>"
                    data-cursor-text="&#x1f6b4;" data-cursor-size="40"></leaflet-gpx>
-      <leaflet-gpx id="sub" style="position: absolute; top: calc(100vw * 720 / 960); left: 67vw; width: 33vw; height: calc(calc(100vh -  3vw - 100vw * 720 / 960) * 0.9);"
+      <leaflet-gpx id="sub" 
                    data-info-size="15" data-info-colors="darkblue,crimson" data-hide-download="false" data-show-side-view="hide" data-popup-font-size="16px"
                    data-home-text="<span style='color: green;font-family: Noto Emoji'>&#x1f3e0;</span>"
                    data-cursor-text="&#x1f6b4;" data-cursor-size="30"
                    data-info-span="600" data-fixed-center="true" data-hide-control="true" data-stop-info-update="true"></leaflet-gpx>
       
-      <pre id="info-left" style="position: absolute; top: calc(100vw * 9 / 16); left: calc(100vw * 20 / 960); width: calc(100vw * 300 / 960); height: calc(100vw * 180 / 960); font-size: calc(100vw * 15 / 960); font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;"></pre>
-      <pre id="info-middle" style="position: absolute; top: calc(100vw * 9 / 16); left: calc(100vw * 340 / 960); width: calc(100vw * 300 / 960); height: calc(100vw * 180 / 960); font-size: calc(100vw * 15 / 960); font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;"></pre>
-      <pre id="info-right" style="position: absolute; top: calc(100vw * 9 / 16); left: calc(100vw * 660 / 960); width: calc(100vw * 300 / 960); height: calc(100vw * 180 / 960); font-size: calc(100vw * 15 / 960); font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;"></pre>
-
-      <div id="yt" style="position: absolute; top: 0vh; left: 0vw; width: 100vw; height: calc(100vw * 9 / 16);"></div>
-
-      <div style="position: absolute; top: calc(100vh - 3vw); left: 0vw; width: 100vw; height: 3vw font-size: 1.5vw">
+      <pre id="info-left"></pre>
+      <pre id="info-middle"></pre>
+      <pre id="info-right"></pre>
+      <div id="yt"></div>
+      <div id="controls-area">
         <select id="chooser" style="width: 100%;">
           <option> -- Choose a viewer setting -- </option>
         </select>
