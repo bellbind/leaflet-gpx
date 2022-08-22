@@ -170,7 +170,7 @@
         // YT.Player: cannot detect pause & seeking state. so not support seeking to sync viewer
         if (ev.data === YT.PlayerState.PLAYING) {
           if (timer) clearInterval(timer);
-          timer = setInterval(syncVideoToViewer, 500);
+          timer = setInterval(syncVideoToViewer, 100);
         }
         if (ev.data === YT.PlayerState.PAUSED || ev.data === YT.PlayerState.ENDED) {
           clearInterval(timer);
