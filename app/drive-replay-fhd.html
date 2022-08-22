@@ -62,7 +62,13 @@
           for (let i = current; i >= 0; i--) {
             if (viewer.infos[i].time <= vtime) {
               //console.log("[vtime < curtime]", vtime, curtime, current, i);
-              viewer.setCursor({cursor: i});
+              if (i === viewer.infos.length - 1) {
+                viewer.setCursor({cursor: i});
+              } else {
+                const dnext = viewer.infos[i + 1].time - curtime;
+                const dprev = curtime - viewer.infos[i].time;
+                viewer.setCursor({cursor: dprev < dnext ? i : i + 1});
+              }
               break;
             }
           }
@@ -70,7 +76,13 @@
           for (let i = current; i < viewer.infos.length; i++) {
             if (viewer.infos[i].time >= vtime) {
               //console.log("[vtime > curtime]", vtime, curtime, current, i);
-              viewer.setCursor({cursor: i});
+              if (i === 0) {
+                viewer.setCursor({cursor: i});
+              } else {
+                const dnext = viewer.infos[i].time - curtime;
+                const dprev = curtime - viewer.infos[i - 1].time;
+                viewer.setCursor({cursor: dprev < dnext ? i - 1 : i});
+              }              
               break;
             }
           }
