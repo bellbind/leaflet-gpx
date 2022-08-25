@@ -206,7 +206,9 @@ const LeafletGpx = class extends HTMLElement {
     this.slider.value = this.homeSlider.value = 0;
     this.slider.max = this.homeSlider.max = this.infos.length - 1;
     this.layer.addTo(this.map);
-    this.map.fitBounds(this.layer.getBounds());
+    if (Number(this.dataset.zoom) >= 0) {
+      this.map.setZoom(Number(this.dataset.zoom));
+    } else this.map.fitBounds(this.layer.getBounds());
     updateGraphs(this);
 
     const cursorText = dataset.cursorText ?? "&#x1f3c3;";
