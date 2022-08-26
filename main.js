@@ -37,6 +37,7 @@ const load = async (file) => {
     const gpxPath = viewer.createGpxPath(xml);
     viewer.setGpxPath(gpxPath);
     cache.set(chooser.value, gpxPath);
+    if (m.size > 16) m.delete([...m.keys()][0]);
     keepLayers(layer);
   });
 };
