@@ -22,6 +22,30 @@
           opacity: 1;
           background-color: transparent;
       }
+      #main {
+          position: absolute; top: 0px; left: 960px; width: 320px; height: 400px;
+      }
+      #sub {
+          position: absolute; top: 400px; left: 960px; width: 320px; height: 320px;
+      }
+      #info-left, #info-middle, #info-right {
+          font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;
+      }
+      #info-left {
+          position: absolute; top: 540px; left: 20px; width: 300px; height: 180px; font-size: 15px;
+      }
+      #info-middle {
+          position: absolute; top: 540px; left: 340px; width: 300px; height: 180px; font-size: 15px;
+      }
+      #info-right {
+          position: absolute; top: 540px; left: 660px; width: 300px; height: 180px; font-size: 15px;
+      }
+      #yt {
+          position: absolute; top: 0px; left:0px; width: 960px; height:540px;
+      }
+      #controls-area {
+          position: absolute; top: 720px; left:0px; width: 1280px;
+      }
     </style>
   </head>
   <body>
@@ -34,21 +58,21 @@
         <menu style="display: flex; align-items: center; justify-content: center;"><button id="open" value="default">open <span>(INFO: right click to reopen)</span></button></menu>
       </form>
     </dialog>
-    <div style="position: relative; border: solid black;">
-      <leaflet-gpx id="main" style="position: absolute; top: 0px; left: 960px; width: 320px; height: 400px;"
+    <div style="position: relative; border: none;">
+      <leaflet-gpx id="main"
                    data-info-size="20" data-info-colors="darkblue,crimson" data-hide-download="false" data-show-side-view="hide" data-popup-font-size="16px"
                    data-home-text="<span style='color: green;font-family: Noto Emoji'>&#x1f3e0;</span>"
                    data-cursor-text="&#x1f6b4;" data-cursor-size="40" data-zoom="18"></leaflet-gpx>
-      <leaflet-gpx id="sub" style="position: absolute; top: 400px; left: 960px; width: 320px; height: 320px;"
+      <leaflet-gpx id="sub" 
                    data-info-size="15" data-info-colors="darkblue,crimson" data-hide-download="false" data-show-side-view="hide" data-popup-font-size="16px"
                    data-home-text="<span style='color: green;font-family: Noto Emoji'>&#x1f3e0;</span>"
                    data-cursor-text="&#x1f6b4;" data-cursor-size="30"
                    data-info-span="600" data-fixed-center="true" data-hide-control="true" data-stop-info-update="true"></leaflet-gpx>
-      <pre id="info-left" style="position: absolute; top: 540px; left: 20px; width: 300px; height: 180px; font-size: 15px; font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;"></pre>
-      <pre id="info-middle" style="position: absolute; top: 540px; left: 340px; width: 300px; height: 180px; font-size: 15px; font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;"></pre>
-      <pre id="info-right" style="position: absolute; top: 540px; left: 660px; width: 300px; height: 180px; font-size: 15px; font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;"></pre>
-      <div id="yt" style="position: absolute; top: 0px; left:0px; width: 960px; height:540px;"></div>
-      <div style="position: absolute; top: 720px; left:0px; width: 1280px;">
+      <pre id="info-left"></pre>
+      <pre id="info-middle"></pre>
+      <pre id="info-right"></pre>
+      <div id="yt"></div>
+      <div id="controls-area">
         <select id="chooser" style="width: 100%;">
           <option> -- Choose a viewer setting -- </option>
         </select>
