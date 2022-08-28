@@ -155,6 +155,7 @@ const tileTemplate = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const attribution = `&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors`;
 L.tileLayer(tileTemplate, {attribution}).addTo(map);
 
+// draw gpx path
 let polyline = null;
 const loadGpx = xml => {
   const parser = new DOMParser();
@@ -165,6 +166,7 @@ const loadGpx = xml => {
   map.fitBounds(polyline.getBounds());
 };
 
+// marker plot
 const secToTime = sec => {
   const s = sec % 60;
   const minute = (sec - s) / 60;
@@ -182,7 +184,7 @@ const listElem = document.getElementById("list");
 const plots = [];
 const updateList = () => {
   listElem.textContent = plots.map(({sec, label}) => `${secToText(sec)} ${label}`).join("\n");
-
+  // update VTT cue
   const tt = video.textTracks[0];
   const cues = [...tt.cues];
   for (const cue of cues) tt.removeCue(cue);
@@ -214,7 +216,10 @@ const newPlot = ({sec, lat, lng, label}) => {
   const jumpButton = document.createElement("button");
   jumpButton.textContent = "\u{23eb}";
   jumpButton.addEventListener("click", ev => {
+    viewer.removeEventListener("cursor-changed", syncViewerToVideo);
     video.currentTime = plot.sec;
+    forceSyncVideoToViewer();
+    viewer.addEventListener("cursor-changed", syncViewerToVideo);
   });
   const content = document.createElement("div");
   content.append(labelInput, `${sec}s`, jumpButton, delButton);
@@ -225,9 +230,9 @@ const newPlot = ({sec, lat, lng, label}) => {
   });
   return plot;
 };
-const addPlot = (sec, lat, lng) => {
+const addPlot = (sec, lat, lng, label = "") => {
   const {h, m, s} = secToTime(sec);
-  const label = (h > 0 ? `${h}h` : ``) + (h > 0 || m > 0 ? `${m}m` : ``) + `${s}s`;
+  label = label || (h > 0 ? `${h}h` : ``) + (h > 0 || m > 0 ? `${m}m` : ``) + `${s}s`;
   const plot = newPlot({sec, lat, lng, label});
   plot.marker.addTo(map);
   plot.marker.openPopup();
@@ -243,7 +248,7 @@ map.on("click", ev => {
   const {lat, lng} = ev.latlng;
   addPlot(sec, lat, lng);
 });
-const putMarker = () => {
+const putMarkerFromViewer = () => {
   if (!video.currentSrc) return;
   const {lat, lng} = viewer.cursor.getLatLng();
   const sec = Math.floor(video.currentTime);
@@ -258,7 +263,7 @@ const putMarker = () => {
 };
 
 document.getElementById("put").addEventListener("click", ev => {
-  putMarker();
+  putMarkerFromViewer();
 });
 
 // exports
@@ -333,7 +338,7 @@ document.getElementById("copy").addEventListener("click", ev => {
   ev.preventDefault();
 });
 
-// TBD: load/store indexeddb, import kml
+// key binding
 const controls = document.getElementById("controls");
 controls.tabIndex = 0;
 controls.addEventListener("keydown", ev => {
@@ -354,11 +359,53 @@ controls.addEventListener("keydown", ev => {
     map.setView(viewer.cursor.getLatLng(), map.getZoom());
     break;
   case "ArrowDown":
-    putMarker();
+    putMarkerFromViewer();
     map.setView(viewer.cursor.getLatLng(), map.getZoom());
     break;
   }
 });
+
+// import kml
+const kmlToPlotData = xml => {
+  const parser = new DOMParser();
+  const kml = parser.parseFromString(xml, "application/xml");
+  // use Placemark Point only
+  const markers = [...kml.querySelectorAll("Placemark")];
+  const plots = markers.map(pm => {
+    const point = pm.querySelector("Point");
+    if (!point) return null;
+    const label = pm.querySelector("name").textContent;
+    const desc = pm.querySelector("description").textContent;
+    const [lng, lat, alt] = point.querySelector("coordinates").textContent.split(",").map(t => Number(t));
+    let secText = desc;
+    try {
+      secText = new URL(desc).searchParams.get("t");
+    } catch (ex) {}
+    const match = secText.match(/^(\d+)s$/);
+    if (!match) return null;
+    const sec = Number(match[1]);
+    return {sec, lat, lng, label};
+  });
+  return plots.filter(p => p);
+};
+const kmlImport = document.getElementById("kml-import");
+kmlImport.addEventListener("input", ev => {
+  const file = kmlImport.files[0];
+  if (!file) return;
+  file.text().then(xml => {
+    for (const {sec, lat, lng, label} of kmlToPlotData(xml)) {
+      if (plots.find(p => p.sec === sec)) continue;
+      const plot = newPlot({sec, lat, lng, label});
+      plot.marker.addTo(map);
+      const i = plots.findIndex(p => p.sec > plot.sec);
+      if (i < 0) plots.push(plot); else plots.splice(i, 0, plot);
+    }
+    updateList();
+  });
+});
+
+// TBD: load/store indexeddb, import kml
+
 
 document.querySelector("dialog").showModal();
 document.body.addEventListener("contextmenu", ev => {document.querySelector("dialog").showModal();});
