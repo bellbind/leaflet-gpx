@@ -437,9 +437,9 @@ const putPlot = plot => {
   db.transaction("rw", db.plots, async () => {
     await db.plots.where({video: recName, sec: plot.sec}).delete();
     await db.plots.put({
-      video: state.video, sec: plot.sec,
+      video: recName, sec: plot.sec,
       lat: plot.lat, lng: plot.lng,
-      label: plot.label, desc: plot.desc,
+      label: plot.label,
     });
   });
 };
