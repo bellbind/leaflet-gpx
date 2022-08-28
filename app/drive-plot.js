@@ -1,3 +1,4 @@
+import {Dexie} from "https://unpkg.com/dexie@latest/dist/dexie.mjs";
 import * as L from "https://unpkg.com/leaflet@1.8.0/dist/leaflet-src.esm.js";
 const leafletCssUrl = "https://unpkg.com/leaflet@1.8.0/dist/leaflet.css";
 
@@ -20,12 +21,16 @@ gpxInput.addEventListener("input", ev => {
 
 const video = document.querySelector("video");
 const videoSource = video.querySelector("source");
+let recName = "";
 const recInput = document.querySelector("input#rec");
 recInput.addEventListener("input", ev => {
   const file = recInput.files[0];
   if (!file) return;
+  recName = file.name;
   videoSource.src = URL.createObjectURL(file);
   video.load();
+  // db
+  loadPlots();
 });
 
 const videoTrack = video.querySelector("track");
@@ -205,6 +210,7 @@ const newPlot = ({sec, lat, lng, label}) => {
   labelInput.addEventListener("input", ev => {
     plot.label = labelInput.value;
     updateList();
+    putPlot(plot);
   });
   const delButton = document.createElement("button");
   delButton.textContent = "\u{1f5d1}";
@@ -212,6 +218,8 @@ const newPlot = ({sec, lat, lng, label}) => {
     plot.marker.remove();
     plots.splice(plots.indexOf(plot), 1);
     updateList();
+    // db
+    deletePlot(plot);
   });
   const jumpButton = document.createElement("button");
   jumpButton.textContent = "\u{23eb}";
@@ -239,6 +247,7 @@ const addPlot = (sec, lat, lng, label = "") => {
   const i = plots.findIndex(p => p.sec > plot.sec);
   if (i < 0) plots.push(plot); else plots.splice(i, 0, plot);
   updateList();
+  putPlot(plot);
 };
 
 map.on("click", ev => {
@@ -257,6 +266,7 @@ const putMarkerFromViewer = () => {
     [plot.lat, plot.lng] = [lat, lng];
     plot.marker.setLatLng({lat, lng});
     plot.marker.openPopup();
+    putPlot(plot);
   } else {
     addPlot(sec, lat, lng);
   }
@@ -319,7 +329,7 @@ const downloadText = (contentType, text, name) => {
 };
 
 document.getElementById("kml").addEventListener("click", ev => {
-  const title = recInput.files[0].name;
+  const title = recName;
   const yt = document.getElementById("yt").value.trim();
   const baseUrl = `${yt}?t=`;
   const xml = plotsToKml(plots, title, baseUrl);
@@ -327,7 +337,7 @@ document.getElementById("kml").addEventListener("click", ev => {
   ev.preventDefault();
 });
 document.getElementById("vtt").addEventListener("click", ev => {
-  const title = recInput.files[0].name;
+  const title = recName;
   const span = Number(document.getElementById("vtt-span").value);
   const vtt = plotsToVtt(plots, span);
   downloadText("text/plain;charset=utf-8", vtt, `${title}.vtt`);
@@ -388,23 +398,57 @@ const kmlToPlotData = xml => {
   });
   return plots.filter(p => p);
 };
+const addPlotData = plotData => {
+  for (const {sec, lat, lng, label} of plotData) {
+    if (plots.find(p => p.sec === sec)) continue;
+    const plot = newPlot({sec, lat, lng, label});
+    plot.marker.addTo(map);
+    const i = plots.findIndex(p => p.sec > plot.sec);
+    if (i < 0) plots.push(plot); else plots.splice(i, 0, plot);
+    putPlot(plot);
+  }
+  updateList();
+};
+
 const kmlImport = document.getElementById("kml-import");
 kmlImport.addEventListener("input", ev => {
   const file = kmlImport.files[0];
   if (!file) return;
   file.text().then(xml => {
-    for (const {sec, lat, lng, label} of kmlToPlotData(xml)) {
-      if (plots.find(p => p.sec === sec)) continue;
-      const plot = newPlot({sec, lat, lng, label});
-      plot.marker.addTo(map);
-      const i = plots.findIndex(p => p.sec > plot.sec);
-      if (i < 0) plots.push(plot); else plots.splice(i, 0, plot);
-    }
-    updateList();
+    addPlotData(kmlToPlotData(xml));
   });
 });
 
 // TBD: load/store indexeddb, import kml
+const db = new Dexie("TimeMap");
+//db.delete();
+db.version(1).stores({
+  plots: "++id,[video+sec],lat,lng,label",
+});
+const loadPlots = () => {
+  if (!recName) return;
+  db.transaction("r", db.plots, async () => {
+    const plotData = await db.plots.where("video").equals(recName).toArray();
+    addPlotData(plotData);
+  });
+};
+const putPlot = plot => {
+  if (!recName) return;
+  db.transaction("rw", db.plots, async () => {
+    await db.plots.where({video: recName, sec: plot.sec}).delete();
+    await db.plots.put({
+      video: state.video, sec: plot.sec,
+      lat: plot.lat, lng: plot.lng,
+      label: plot.label, desc: plot.desc,
+    });
+  });
+};
+const deletePlot = plot => {
+  if (!recName) return;
+  db.transaction("rw", db.plots, async () => {
+    await db.plots.where({video: recName, sec: plot.sec}).delete();
+  });
+};
 
 
 document.querySelector("dialog").showModal();
