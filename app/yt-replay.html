@@ -28,7 +28,8 @@
       #info-left, #info-middle, #info-right, #chooser {
           font-family: 'Noto Mono', 'Menlo', 'Consolas', monospace !important;
       }
-      @media (orientation: portrait) {
+      @media (max-aspect-ratio: 4/3) {
+      /*@media (orientation: portrait) {*/
           #main {
               position: absolute; top: calc(100vw * 720 / 960); left: 0vw; width: 66vw; height: calc(100vh - 100vw * 750 / 960);
           }
@@ -51,8 +52,8 @@
               position: absolute; top: calc(100vh - 100vw * 30 / 960); left: 0vw; width: 100vw; height: calc(100vw * 15 / 960); font-size: calc(100vw * 15 / 960);
           }
       }
-     
-     @media (orientation: landscape) {
+      @media (min-aspect-ratio: 4/3) {
+     /*@media (orientation: landscape) {*/
           #main {
               position: absolute; top: 0vh; left: calc(100vh * 960 / 750); width: calc(100vw - 100vh * 960 / 750); height: calc(100vh * 400 / 750);
           }
