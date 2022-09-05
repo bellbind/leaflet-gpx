@@ -39,8 +39,10 @@ subInput.addEventListener("input", ev => {
 
 const obs = new OBSWebSocket();
 video.addEventListener("ended", () => {
-  obs.call("StopStream").catch(console.error);
-  obs.call("StopRecord").catch(console.error);
+  setTimeout(() => {
+    obs.call("StopStream").catch(console.error);
+    obs.call("StopRecord").catch(console.error);
+  }, 30 * 1000); // delay required
 });
 obs.on("StreamStateChanged", ev => {
   //console.log("StreamStateChanged", ev);
