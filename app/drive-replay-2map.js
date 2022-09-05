@@ -1,3 +1,5 @@
+//import "https://cdn.jsdelivr.net/npm/obs-websocket-js";
+
 const viewer = document.querySelector("leaflet-gpx#main");
 const submap = document.querySelector("leaflet-gpx#sub");
 viewer.addEventListener("cursor-changed", ev => {
@@ -15,6 +17,7 @@ gpxInput.addEventListener("input", ev => {
 });
 
 const video = document.querySelector("video");
+const videoTrack = video.querySelector("track");
 const videoSource = video.querySelector("source");
 const recInput = document.querySelector("input#rec");
 recInput.addEventListener("input", ev => {
@@ -24,7 +27,6 @@ recInput.addEventListener("input", ev => {
   video.load();
 });
 
-const videoTrack = video.querySelector("track");
 const subInput = document.querySelector("input#sub");
 subInput.addEventListener("input", ev => {
   const file = subInput.files[0];
@@ -33,6 +35,38 @@ subInput.addEventListener("input", ev => {
   videoTrack.src = URL.createObjectURL(file);
   video.load();
   video.textTracks[0].mode = "showing";
+});
+
+const obs = new OBSWebSocket();
+video.addEventListener("ended", () => {
+  obs.call("StopStream").catch(console.error);
+  obs.call("StopRecord").catch(console.error);
+});
+obs.on("StreamStateChanged", ev => {
+  //console.log("StreamStateChanged", ev);
+  if (ev.outputState === "OBS_WEBSOCKET_OUTPUT_STARTED") {
+    video.play();
+  }
+});
+obs.on("RecordStateChanged", ev => {
+  //console.log("RecordStateChanged", ev);
+  if (ev.outputState === "OBS_WEBSOCKET_OUTPUT_STARTED") {
+    video.play();
+  }
+});
+const connectButton = document.getElementById("obs-connect");
+connectButton.addEventListener("click", ev => {
+  ev.preventDefault();
+  if (connectButton.textContent === "connect") {
+    const url = document.getElementById("obs-url").value;
+    obs.connect(url, undefined, {eventSubscriptions: OBSWebSocket.EventSubscription.Outputs}).then(() => {
+      connectButton.textContent = "disconnect";
+    });
+  } else {
+    obs.disconnect().then(() => {
+      connectButton.textContent = "connect";
+    });
+  }
 });
 
 const speedInput = document.getElementById("speed");
