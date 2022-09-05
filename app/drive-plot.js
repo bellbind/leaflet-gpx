@@ -21,6 +21,8 @@ gpxInput.addEventListener("input", ev => {
 
 const video = document.querySelector("video");
 const videoSource = video.querySelector("source");
+const videoTrack = video.querySelector("track");
+
 let recName = "";
 const recInput = document.querySelector("input#rec");
 recInput.addEventListener("input", ev => {
@@ -33,7 +35,20 @@ recInput.addEventListener("input", ev => {
   loadPlots();
 });
 
-const videoTrack = video.querySelector("track");
+document.getElementById("compute-speed").addEventListener("click", ev => {
+  ev.preventDefault();
+  const start = document.getElementById("start");
+  const end = document.getElementById("end");
+  if (!start.value || !end.value) return;
+  if (!Number.isFinite(video.duration)) return;
+
+  const ssec = start.value.split(":").reduce((s, e) => s * 60 + Number(e), 0);
+  const esec = end.value.split(":").reduce((s, e) => s * 60 + Number(e), 0);
+  const span = (esec < ssec ? 24 * 3600 : 0) +  esec - ssec;
+  //console.log(ssec, esec, span, video.duration, span / video.duration);
+  document.getElementById("scale").value = (span / video.duration).toFixed(4);
+});
+
 
 const speedInput = document.getElementById("speed");
 const offsetInput = document.getElementById("offset");
