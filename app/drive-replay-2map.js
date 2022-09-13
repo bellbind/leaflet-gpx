@@ -37,45 +37,59 @@ subInput.addEventListener("input", ev => {
   video.textTracks[0].mode = "showing";
 });
 
-const obs = new OBSWebSocket();
-video.addEventListener("ended", () => {
-  setTimeout(() => {
-    obs.call("StopStream").catch(console.error);
-    obs.call("StopRecord").catch(console.error);
-  }, 30 * 1000); // delay required
-});
-obs.on("StreamStateChanged", ev => {
-  //console.log("StreamStateChanged", ev);
-  if (ev.outputState === "OBS_WEBSOCKET_OUTPUT_STARTED") {
-    video.play();
-  }
-});
-obs.on("RecordStateChanged", ev => {
-  //console.log("RecordStateChanged", ev);
-  if (ev.outputState === "OBS_WEBSOCKET_OUTPUT_STARTED") {
-    video.play();
-  }
-});
-const connectButton = document.getElementById("obs-connect");
-connectButton.addEventListener("click", ev => {
-  ev.preventDefault();
-  if (connectButton.textContent === "connect") {
-    const url = document.getElementById("obs-url").value;
-    obs.connect(url, undefined, {eventSubscriptions: OBSWebSocket.EventSubscription.Outputs}).then(() => {
-      connectButton.textContent = "disconnect";
-    });
-  } else {
-    obs.disconnect().then(() => {
-      connectButton.textContent = "connect";
-    });
-  }
-});
+if (globalThis.OBSWebSocket) {
+  const obs = new OBSWebSocket();
+  video.addEventListener("ended", () => {
+    setTimeout(() => {
+      // OBS WebSocket send commands:
+      // https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#requests
+      obs.call("StopStream").catch(console.error);
+      obs.call("StopRecord").catch(console.error);
+    }, 30 * 1000); // delay required
+  });
+  // OBS WebSocket sent events:
+  // https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#events
+  obs.on("StreamStateChanged", ev => {
+    //console.log("StreamStateChanged", ev);
+    if (ev.outputState === "OBS_WEBSOCKET_OUTPUT_STARTED") {
+      video.play();
+    }
+  });
+  obs.on("RecordStateChanged", ev => {
+    //console.log("RecordStateChanged", ev);
+    if (ev.outputState === "OBS_WEBSOCKET_OUTPUT_STARTED") {
+      video.play();
+    }
+  });
+  const onClosed = ev => {
+    connectButton.textContent = "connect";
+  };
+  obs.on("ExitStarted", onClosed);
+  obs.on("ConnectionError", onClosed);
+  obs.on("ConnectionClosed", onClosed);
+  
+  const connectButton = document.getElementById("obs-connect");
+  connectButton.addEventListener("click", ev => {
+    ev.preventDefault();
+    if (connectButton.textContent === "connect") {
+      const url = document.getElementById("obs-url").value;
+      obs.connect(url, undefined, {eventSubscriptions: OBSWebSocket.EventSubscription.Outputs}).then(() => {
+        connectButton.textContent = "disconnect";
+      });
+    } else {
+      obs.disconnect().then(() => {
+        connectButton.textContent = "connect";
+      });
+    }
+  });
+}
 
 const speedInput = document.getElementById("speed");
 const offsetInput = document.getElementById("offset");
 const syncViewerToVideo = () => {
   //if (video.seeking || !video.paused) return;
   if (!video.paused) return;
+  if (!viewer.infos || viewer.infos.length === 0) return;
   const speed = Number(speedInput.value);
   const offset = Number(offsetInput.value);
   const start = viewer.infos[0].time;
