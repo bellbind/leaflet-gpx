@@ -337,12 +337,14 @@ const plotsToVtt = (plots, span = 1) => {
 };
 
 const downloadText = (contentType, text, name) => {
+  downloadDataUrl(`data:${contentType},${text}`, name);
+};
+const downloadDataUrl = (data, name) => {
   const a = document.createElement("a");
-  a.href = `data:${contentType},${text}`;
+  a.href = data;
   a.download = name;
   a.click();
 };
-
 document.getElementById("kml").addEventListener("click", ev => {
   const title = recName;
   const yt = document.getElementById("yt").value.trim();
@@ -434,7 +436,7 @@ kmlImport.addEventListener("input", ev => {
   });
 });
 
-// TBD: load/store indexeddb, import kml
+// load/store
 const db = new Dexie("TimeMap");
 //db.delete();
 db.version(1).stores({
@@ -465,6 +467,25 @@ const deletePlot = plot => {
   });
 };
 
+// create thumbnail png
+document.getElementById("thumb").addEventListener("click", ev => {
+  (async () => {
+    const ms = await navigator.mediaDevices.getDisplayMedia({preferCurrentTab: true});
+    const [track] = ms.getVideoTracks();
+    const capture = new ImageCapture(track);
+    const bitmap = await capture.grabFrame();
+    console.log(bitmap);
+    const crop = await createImageBitmap(bitmap, 0, 0, 1280, 720);
+    console.log(crop);
+    const canvas = document.createElement("canvas");;
+    [canvas.width, canvas.height] = [1280, 720];
+    const renderer = canvas.getContext("bitmaprenderer");
+    renderer.transferFromImageBitmap(crop);
+    const data = canvas.toDataURL();
+    const title = recName.replace(/\.mp4$/, "-thumb.png");
+    downloadDataUrl(data, title);
+  })().catch(console.error);
+});
 
 document.querySelector("dialog").showModal();
 document.body.addEventListener("contextmenu", ev => {document.querySelector("dialog").showModal();});
