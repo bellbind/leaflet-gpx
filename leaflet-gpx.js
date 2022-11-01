@@ -261,7 +261,7 @@ const loadGpxFromUrl = async url => {
   return await res.text();
 };
 const loadGpxFromCid = async cid => {
-  const ipfsCdn = "https://unpkg.com/ipfs@0.58.6/dist/index.min.js"; // the last version that contains CND dist js
+  const ipfsCdn = "https://cdnjs.cloudflare.com/ajax/libs/ipfs/0.65.0/index.min.js"; // the last version that contains CND dist js
   const mod = await import(ipfsCdn);
   const node = await Ipfs.create({repo: `tmp-${Math.random()}`});
   const decoder = new TextDecoder(), texts = [];
