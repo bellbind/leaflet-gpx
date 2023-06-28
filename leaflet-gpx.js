@@ -168,11 +168,12 @@ const LeafletGpx = class extends HTMLElement {
   }
   clearGpx() {
     if (!this.layer) return;
+    //this.path.remove();
     this.layer.remove();
     this.control.remove();
     this.cursor.remove();
     this.home.remove();
-    this.layer = this.cursor = this.control = this.home = null;
+    this.layer = this.cursor = this.control = this.home = this.path = null;
     this.slider.value = this.homeSlider.value = this.slider.max = this.homeSlider.max = 0;
     this.infos = this.segTrees = null;
     updateGraphs(this);
@@ -196,13 +197,14 @@ const LeafletGpx = class extends HTMLElement {
     const span = dataSpan > 0 ? dataSpan : 60;
     const size = dataSize > 0 ? dataSize : 10;
     const colors = dataColors.length > 0 ? dataColors : ["cyan", "magenta"];
-    const layer = createGpxLayer(infos, segTrees, {span, size, colors}, dataset);
-    return {layer, gpx, xml, infos, segTrees};
+    const path = L.featureGroup();
+    const layer = createGpxLayer(path, infos, segTrees, {span, size, colors}, dataset);
+    return {layer, path, gpx, xml, infos, segTrees};
   }
-  setGpxPath({layer, gpx, xml, infos, maxSpeedTree, segTrees}, dataset = this.dataset) {
+  setGpxPath({layer, path, gpx, xml, infos, segTrees}, dataset = this.dataset) {
     this.clearGpx();
     if (infos.length === 0) return this;
-    [this.layer, this.infos, this.segTrees] = [layer, infos, segTrees]; 
+    [this.layer, this.path, this.infos, this.segTrees] = [layer, path, infos, segTrees]; 
     this.slider.value = this.homeSlider.value = 0;
     this.slider.max = this.homeSlider.max = this.infos.length - 1;
     this.layer.addTo(this.map);
@@ -244,11 +246,23 @@ const LeafletGpx = class extends HTMLElement {
 
 const updateCursorInfo = self => {
   if (self.dataset.stopInfoUpdate === "true") return;
+  self.path.clearLayers();
+  const routeOpts = {color: "blue", weight: 5, opacity: 0.33, zIndexOffset: 150};
+  const trackOpts = {color: "blue", weight: 6, opacity: 0.66, zIndexOffset: 150};
+  if (self.homeSlider.value > self.slider.value) {
+    self.path.addLayer(L.polyline(self.infos.slice(self.slider.value | 0, self.homeSlider.value | 0).map(i => i.latlng), routeOpts));
+    self.path.addLayer(L.polyline(self.infos.slice(self.homeSlider.value | 0, self.infos.length).map(i => i.latlng), trackOpts));
+    self.path.addLayer(L.polyline(self.infos.slice(0, self.slider.value | 0).map(i => i.latlng), trackOpts));
+  } else {
+    self.path.addLayer(L.polyline(self.infos.slice(0, self.homeSlider.value | 0).map(i => i.latlng), routeOpts));
+    self.path.addLayer(L.polyline(self.infos.slice(self.homeSlider.value | 0, self.slider.value | 0).map(i => i.latlng), trackOpts));
+    self.path.addLayer(L.polyline(self.infos.slice(self.slider.value | 0, self.infos.length).map(i => i.latlng), routeOpts));
+  }
   const content = infoPopup(self.infos, self.segTrees, self.slider.value | 0, self.homeSlider.value | 0);
   self.sideView.innerHTML = `<div style="padding: 1em;">${content}</div>`;
   self.cursor.setPopupContent(content);
-  if(self.dataset.fixedCenter !== "true") self.map.setView(self.cursor.getLatLng(), self.map.getZoom());
   if (!["left", "right", "hide"].includes(self.dataset.showSideView)) self.cursor.openPopup();
+  if(self.dataset.fixedCenter !== "true") self.map.panTo(self.cursor.getLatLng());
   updateGraphs(self);
   self.dispatchEvent(new CustomEvent("cursor-changed", {detail: self.getCursor()}));
 };
@@ -473,16 +487,17 @@ const infoMarkArrow = (latlng, angle, color, size) => {
   const iconSize = [0, 0], iconAnchor = [size / 2, size * 0.8], popupAnchor = [0, -size / 2];
   const cursorText = "&#x27a4;";
   const deg = angle * 180 / Math.PI - 90;
-  const style = `display: inline-block; font-weight: bold; font-size: ${size}px; color: ${color}; transform: rotate3d(0, 0, 1, ${deg}deg);`;
+  const style = `display: inline-block; font-weight: bold; font-size: ${size}px; color: ${color}; opacity: 0.7; transform: rotate3d(0, 0, 1, ${deg}deg);`;
   return L.marker(latlng, {
     icon: L.divIcon({html: `<span style="${style}">${cursorText}</span>`, iconSize, iconAnchor, popupAnchor}),
   });
 };
-const createGpxLayer = (infos, segTrees, {span = 60, size = 10, colors = ["cyan", "magenta"]} = {}, dataset = {}) => {
+const createGpxLayer = (path, infos, segTrees, {span = 60, size = 10, colors = ["cyan", "magenta"]} = {}, dataset = {}) => {
   // path
-  const layer = L.featureGroup()
+  const layer = L.featureGroup();
+  path.addTo(layer);
   const coords = infos.map(({latlng}) => latlng);
-  const path = L.polyline(coords, {color: "blue", weight: 5, opacity: 0.5}).addTo(layer);
+  const track = L.polyline(coords, {color: "blue", weight: 5, opacity: 0.5}).addTo(path);
   
   // info popup
   const picked = infos.filter((info, i) => i % span === 0 || i === infos.length - 1);
@@ -510,7 +525,7 @@ const createCursorHome = (infos, segTrees, {cursorText, homeText, cursorSize = 3
   const cursor = L.marker(infos[0].latlng, {
     icon: L.divIcon({html: `<span style="${style}">${cursorText}</span>`, iconSize, iconAnchor, popupAnchor}),
     zIndexOffset: 200,
-  }).bindPopup(infoPopup(infos, segTrees, 0));
+  }).bindPopup(infoPopup(infos, segTrees, 0), {autoPan: true, keepInView: true});
   const home = L.marker(infos[0].latlng, {
     icon: L.divIcon({html: `<span style="${style}">${homeText}</span>`, iconSize, iconAnchor, popupAnchor}),
     zIndexOffset: -1000,
