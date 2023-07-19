@@ -275,11 +275,15 @@ const loadGpxFromUrl = async url => {
   return await res.text();
 };
 const loadGpxFromCid = async cid => {
-  const ipfsCdn = "https://cdnjs.cloudflare.com/ajax/libs/ipfs/0.65.0/index.min.js"; // the last version that contains CND dist js
-  const mod = await import(ipfsCdn);
-  const node = await Ipfs.create({repo: `tmp-${Math.random()}`});
+  const heliaCdn = "https://cdn.jsdelivr.net/npm/helia@^1.3.8/dist/index.min.js";
+  const heliaUnixfsCdn = "https://cdn.jsdelivr.net/npm/@helia/unixfs@^1.4.0/dist/index.min.js";
+  await import(heliaCdn);
+  await import(heliaUnixfsCdn);
+  const node = await Helia.createHelia();
+  const nodefs = HeliaUnixfs.unixfs(node);
   const decoder = new TextDecoder(), texts = [];
-  for await (const chunk of node.cat(cid)) texts.push(decoder.decode(chunk, {stream: true}));
+  for await (const chunk of nodefs.cat(cid)) texts.push(decoder.decode(chunk, {stream: true}));
+  await node.stop();
   return texts.join("");
 };
 
