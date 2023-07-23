@@ -1,5 +1,5 @@
 [
-  {"gpx":"../gpx/20230723-095252.gpx","vid":"_I3WVO677BQ","speed":3.995,"offset":20, "skips": [{"at": 3692, "sec": 231}]},
+  {"gpx":"../gpx/20230723-095252.gpx","vid":"_I3WVO677BQ","speed":3.995,"offset":20, "skips": [{"video-at": 3692, "gps-sec": 844}]},
   {"gpx":"../gpx/20230715-124759.gpx","vid":"aAVJK2f8F3Y","speed":3.995,"offset":23},
   {"gpx":"../gpx/20230713-102858.gpx","vid":"Qt-GE65OMHg","speed":3.995,"offset":27},
   {"gpx":"../gpx/20230626-111326.gpx","vid":"eHn9FYmva20","speed":3.995,"offset":29},
