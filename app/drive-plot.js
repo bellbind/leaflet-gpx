@@ -52,15 +52,32 @@ document.getElementById("compute-speed").addEventListener("click", ev => {
 
 const speedInput = document.getElementById("speed");
 const offsetInput = document.getElementById("offset");
+const getSkips = () => {
+  try {
+    const json = JSON.parse(document.getElementById("skips").value);
+    if (!Array.isArray(json)) return [{"video-at": 0, "gps-sec": 0}];
+    const skips = json.filter(o => Number.isFinite(o["video-at"]) && Number.isFinite(o["gps-sec"]) && o["video-at"] >= 0);
+    if (skips.length === 0) return [{"video-at": 0, "gps-sec": 0}];
+    return skips.sort((a, b) => a["video-at"] - b["video-at"]);
+  } catch (err) {
+    return [{"video-at": 0, "gps-sec": 0}];
+  }
+};
+
 const syncViewerToVideo = () => {
   //if (video.seeking || !video.paused) return;
   if (!video.paused) return;
   const speed = Number(speedInput.value);
   const offset = Number(offsetInput.value);
+  const skips = getSkips();
+  
   const start = viewer.infos[0].time;
   const cur = viewer.infos[Number(viewer.slider.value)].time;
   const time = (cur - start) / 1000;
-  video.currentTime = (time - offset) / speed;
+  const videoTime = (time - offset) / speed;
+  const skip = skips.findLast(s => s["video-at"] < videoTime) ?? {"video-at": 0, "gps-sec": 0};
+  const skipTime = skip["gps-sec"] / speed;
+  video.currentTime = (skip["video-at"] > videoTime - skipTime) ? skip["video-at"] : videoTime - skipTime;
 };
 offsetInput.addEventListener("input", syncViewerToVideo);
 viewer.addEventListener("cursor-changed", syncViewerToVideo);
@@ -74,8 +91,11 @@ const forceSyncVideoToViewer = () => {
   if (!viewer.infos) return;
   const speed = Number(speedInput.value);
   const offset = Number(offsetInput.value);
+  const skips = getSkips();
+  
+  const skip = skips.findLast(s => s["video-at"] < video.currentTime) ?? {"video-at": 0, "gps-sec": 0};
   const current = Number(viewer.slider.value);
-  const msec = (offset + speed * video.currentTime) * 1000;
+  const msec = (offset + speed * video.currentTime + skip["gps-sec"]) * 1000;
   const vtime = (viewer.infos[0].time || 0) + msec;
   const curtime = viewer.infos[current].time;
   if (vtime === curtime) return;
