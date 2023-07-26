@@ -5,7 +5,7 @@ const hashToJson = hash => {
   json.offset = Number(json.offset);
   return json;
 };
-      
+
 await new Promise(f => {window.onYouTubeIframeAPIReady = f;});
 const viewer = document.querySelector("leaflet-gpx#main");
 const submap = document.querySelector("leaflet-gpx#sub");
@@ -23,6 +23,7 @@ const vidInput = document.getElementById("vid");
 const speedInput = document.getElementById("speed");
 const offsetInput = document.getElementById("offset");
 const openButton = document.getElementById("open");
+const skipsInput = document.getElementById("skips");
 
 const dialog = document.querySelector("dialog");
 dialog.addEventListener("close", ev => {
@@ -30,7 +31,8 @@ dialog.addEventListener("close", ev => {
   const vid = vidInput.value.trim();
   const speed = Number(speedInput.value);
   const offset = Number(offsetInput.value);
-  const json = {gpx, vid, speed, offset};
+  const skips = skipsInput.value;
+  const json = {gpx, vid, speed, offset, skips};
   history.pushState(json, null, `${location.pathname}#${jsonToHash(json)}`);
   play();
 });
@@ -51,6 +53,7 @@ chooser.addEventListener("change", ev => {
     return;
   };
   const json = JSON.parse(chooser.value);
+  if (json.skips) json.skips = JSON.stringify(json.skips);
   history.pushState(json, null, `${location.pathname}#${jsonToHash(json)}`);
   loadHashState();
 });
@@ -89,6 +92,7 @@ const loadHashState = () => {
   vidInput.value = json.vid;
   speedInput.value = json.speed;
   offsetInput.value = json.offset;
+  if (json.skips) skipsInput.value = json.skips;
   dialog.showModal();
 };
 window.addEventListener("popstate", loadHashState);
@@ -98,19 +102,37 @@ const updateInfo = async () => {
   const gpx = gpxInput.value.trim();
   const speed = speedInput.value;
   const offset = offsetInput.value;
-  const setting = {gpx, vid, speed, offset};
+  const skips = skipsInput.value;
+  const setting = {gpx, vid, speed, offset, skips};
   history.pushState(setting, null, `${location.pathname}#${jsonToHash(setting)}`);
 };
 document.body.addEventListener("contextmenu", ev => {dialog.showModal();});
+const getSkips = () => {
+  try {
+    const json = JSON.parse(skipsInput.value);
+    if (!Array.isArray(json)) return [{"video-at": 0, "gps-sec": 0}];
+    const skips = json.filter(o => Number.isFinite(o["video-at"]) && Number.isFinite(o["gps-sec"]) && o["video-at"] >= 0);
+    if (skips.length === 0) return [{"video-at": 0, "gps-sec": 0}];
+    return skips.sort((a, b) => a["video-at"] - b["video-at"]);
+  } catch (err) {
+    return [{"video-at": 0, "gps-sec": 0}];
+  }
+};
 
 const syncViewerToVideo = () => {
   if (video.getPlayerState() === YT.PlayerState.PLAYING) return;
   const speed = Number(speedInput.value);
   const offset = Number(offsetInput.value);
+  const skips = getSkips();
+  
   const start = viewer.infos[0].time;
   const cur = viewer.infos[Number(viewer.slider.value)].time;
   const time = (cur - start) / 1000;
-  video.seekTo((time - offset) / speed, true);
+  const videoTime = (time - offset) / speed;
+  const skip = skips.findLast(s => s["video-at"] < videoTime) ?? {"video-at": 0, "gps-sec": 0};
+  const skipTime = skip["gps-sec"] / speed;
+  video.seekTo((skip["video-at"] > videoTime - skipTime) ? skip["video-at"] : videoTime - skipTime, true);
+  //video.seekTo((time - offset) / speed, true);
 };
 viewer.addEventListener("cursor-changed", syncViewerToVideo);
 
@@ -119,8 +141,11 @@ const syncVideoToViewer = () => {
   if (!viewer.infos) return;
   const speed = Number(speedInput.value);
   const offset = Number(offsetInput.value);
+  const skips = getSkips();
+
+  const skip = skips.findLast(s => s["video-at"] < video.getCurrentTime()) ?? {"video-at": 0, "gps-sec": 0};
   const current = Number(viewer.slider.value);
-  const msec = (offset + speed * video.getCurrentTime()) * 1000;
+  const msec = (offset + speed * video.getCurrentTime() + skip["gps-sec"]) * 1000;
   const vtime = (viewer.infos[0].time || 0) + msec;
   const curtime = viewer.infos[current].time;
   if (vtime === curtime) return;
